@@ -1,0 +1,1 @@
+db.match_stats.createIndex({ season_id: 1, match_date: -1 })

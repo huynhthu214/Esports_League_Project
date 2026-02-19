@@ -1,0 +1,51 @@
+{
+  "match_id": "M2025_001",
+  "season_id": "SS2025",
+  "match_date": {
+    "$date": "2025-03-20T14:30:00Z"
+  },
+  "teams": [
+    {
+      "team_id": "SGD",
+      "result": "WIN",
+      "score": 2,
+      "players": [
+        {
+          "player_id": "P001",
+          "kills": 9,
+          "deaths": 2,
+          "assists": 12,
+          "gold": 14200
+        },
+        {
+          "player_id": "P002",
+          "kills": 4,
+          "deaths": 5,
+          "assists": 8,
+          "gold": 11000
+        }
+      ]
+    },
+    {
+      "team_id": "HNL",
+      "result": "LOSS",
+      "score": 1,
+      "players": [
+        {
+          "player_id": "P011",
+          "kills": 5,
+          "deaths": 4,
+          "assists": 3,
+          "gold": 12500
+        },
+        {
+          "player_id": "P012",
+          "kills": 2,
+          "deaths": 7,
+          "assists": 4,
+          "gold": 9800
+        }
+      ]
+    }
+  ]
+}
