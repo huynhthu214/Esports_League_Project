@@ -5,7 +5,7 @@ const cors = require('cors');
 const app = express();
 app.use(cors()); // Cho phép Frontend truy cập API
 
-const uri = "mongodb+srv://esports_league:nhom09123@cluster0.mtn2vb1.mongodb.net/";
+const uri = "mongodb://esports_league:nhom09123@ac-qzc1ssg-shard-00-00.mtn2vb1.mongodb.net:27017,ac-qzc1ssg-shard-00-01.mtn2vb1.mongodb.net:27017,ac-qzc1ssg-shard-00-02.mtn2vb1.mongodb.net:27017/?ssl=true&replicaSet=atlas-w7ar82-shard-0&authSource=admin&appName=Cluster0";
 const client = new MongoClient(uri);
 
 // API Lấy Bảng Xếp Hạng KDA (Bê nguyên Pipeline Tuần 2 vào đây)
