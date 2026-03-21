@@ -1,22 +1,28 @@
+import os
 import pymongo
-import oracledb
+import pyodbc
+from dotenv import load_dotenv
 
-# 1. Cấu hình kết nối MongoDB Atlas (Dùng chuỗi kết nối đã lách luật SRV của bạn)
-MONGO_URI = "mongodb://esports_league:nhom09123@cluster0-shard-00-00.mtn2vb1.mongodb.net:27017,cluster0-shard-00-01.mtn2vb1.mongodb.net:27017,cluster0-shard-00-02.mtn2vb1.mongodb.net:27017/?ssl=true&replicaSet=atlas-xxxxxx-shard-0&authSource=admin&retryWrites=true&w=majority"
+# Nạp cấu hình từ file .env
+load_dotenv()
+
+# 1. Cấu hình MongoDB
+MONGO_URI = os.getenv("MONGO_URI")
 mongo_client = pymongo.MongoClient(MONGO_URI)
 db_nosql = mongo_client["esports_league"]
 match_stats_col = db_nosql["match_stats"]
 
-# 2. Cấu hình kết nối Oracle SQL (Hỏi Thành viên 1 thông tin này)
-ORACLE_USER = "system" # Tên đăng nhập Oracle
-ORACLE_PASS = "oracle_password" # Mật khẩu Oracle
-ORACLE_DSN = "localhost:1521/XEPDB1" # Địa chỉ Database của TV1
+# 2. Cấu hình MS SQL Server
+MSSQL_SERVER = os.getenv("MSSQL_SERVER")
+MSSQL_DATABASE = os.getenv("MSSQL_DATABASE")
+MSSQL_USER = os.getenv("MSSQL_USER")
+MSSQL_PASS = os.getenv("MSSQL_PASS")
 
 def sync_data():
     try:
         print("Đang tổng hợp dữ liệu trận đấu từ MongoDB...")
         
-        # Pipeline: Tính tổng số mạng hạ gục của mỗi đội để làm điểm xếp hạng (Ví dụ)
+        # Pipeline giữ nguyên
         pipeline = [
             { "$unwind": "$teams" },
             { "$group": {
@@ -26,27 +32,29 @@ def sync_data():
         ]
         
         team_stats = list(match_stats_col.aggregate(pipeline))
-        print(f"Đã lấy thống kê của {len(team_stats)} đội. Đang kết nối Oracle...")
+        print(f"Đã lấy thống kê của {len(team_stats)} đội. Đang kết nối MS SQL...")
 
-        # Kết nối vào Oracle Database
-        connection = oracledb.connect(user=ORACLE_USER, password=ORACLE_PASS, dsn=ORACLE_DSN)
+        # Tạo chuỗi kết nối cho MS SQL (Dùng ODBC Driver 17)
+        conn_str = f"DRIVER={{ODBC Driver 17 for SQL Server}};SERVER={MSSQL_SERVER};DATABASE={MSSQL_DATABASE};UID={MSSQL_USER};PWD={MSSQL_PASS}"
+        connection = pyodbc.connect(conn_str)
         cursor = connection.cursor()
 
-        # Cập nhật dữ liệu vào bảng SQL của TV1 (Giả sử bảng tên là TEAM_STANDINGS)
+        # Cập nhật dữ liệu vào bảng SQL
         for team in team_stats:
             team_id = team['_id']
             total_kills = team['total_team_kills']
             
-            # Lệnh UPDATE SQL (TV1 cần đảm bảo bảng này đã tồn tại)
+            # MS SQL dùng dấu ? để truyền tham số
             sql_update = """
                 UPDATE TEAM_STANDINGS 
-                SET TOTAL_KILLS = :kills 
-                WHERE TEAM_ID = :t_id
+                SET TOTAL_KILLS = ? 
+                WHERE TEAM_ID = ?
             """
-            cursor.execute(sql_update, kills=total_kills, t_id=team_id)
+            # Truyền tham số theo đúng thứ tự của dấu ?
+            cursor.execute(sql_update, (total_kills, team_id))
             
         connection.commit()
-        print("Đồng bộ dữ liệu sang Oracle SQL THÀNH CÔNG!")
+        print("Đồng bộ dữ liệu sang MS SQL THÀNH CÔNG!")
 
     except Exception as e:
         print("Lỗi trong quá trình đồng bộ:", e)
