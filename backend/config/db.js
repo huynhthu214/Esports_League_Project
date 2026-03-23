@@ -1,38 +1,53 @@
 // backend/config/db.js
-const sql = require('mssql');
-const { MongoClient } = require('mongodb');
-require('dotenv').config();
+const sql = require("mssql");
+const mongoose = require("mongoose");
 
 // Cấu hình MS SQL
 const sqlConfig = {
-    user: process.env.SQL_USER || 'sa',
-    password: process.env.SQL_PASSWORD || 'YourPassword123',
-    database: process.env.SQL_DATABASE || 'EsportsLeague',
-    server: process.env.SQL_SERVER || 'localhost',
-    options: { encrypt: false, trustServerCertificate: true } 
+  user: process.env.SQL_USER || "sa",
+  password: process.env.SQL_PASSWORD,
+  database: process.env.SQL_DATABASE || "EsportsLeagueDB",
+  server: process.env.SQL_SERVER || "localhost",
+  port: parseInt(process.env.SQL_PORT) || 1433,
+  options: { encrypt: false, trustServerCertificate: true },
+  pool: { max: 10, min: 0, idleTimeoutMillis: 30000 },
 };
 
-// Cấu hình MongoDB
-const mongoUri = process.env.MONGO_URI || 'mongodb:mongodb+srv://esports_league:nhom09123@cluster0.mtn2vb1.mongodb.net/';
-const mongoClient = new MongoClient(mongoUri);
-let mongoDb;
+let sqlPool = null;
 
-const connectDB = async () => {
-    try {
-        // Kết nối MS SQL
-        await sql.connect(sqlConfig);
-        console.log('✅ Đã kết nối MS SQL Server!');
-
-        // Kết nối MongoDB
-        await mongoClient.connect();
-        mongoDb = mongoClient.db('esports_league');
-        console.log('✅ Đã kết nối MongoDB!');
-    } catch (err) {
-        console.error('❌ Lỗi kết nối Database:', err);
-        process.exit(1);
-    }
+const connectSQL = async () => {
+  sqlPool = await sql.connect(sqlConfig);
+  console.log("✅ MS SQL Server connected");
+  return sqlPool;
 };
 
-const getMongoDb = () => mongoDb;
+const getPool = () => {
+  if (!sqlPool) throw new Error("SQL pool chưa khởi tạo");
+  return sqlPool;
+};
 
-module.exports = { connectDB, sql, getMongoDb };
+// MongoDB — OPTIONAL: không crash server nếu kết nối thất bại
+const connectMongo = async () => {
+  try {
+    await mongoose.connect(process.env.MONGODB_URI, {
+      serverSelectionTimeoutMS: 5000,
+    });
+    console.log("✅ MongoDB Atlas connected");
+  } catch (err) {
+    console.warn(
+      "⚠️  MongoDB không kết nối được — các API analytics sẽ không hoạt động.",
+    );
+    console.warn("   Lý do:", err.message.split("\n")[0]);
+    console.warn("   → Thử dùng hotspot điện thoại để fix.");
+    // Không throw — server vẫn chạy bình thường với MS SQL
+  }
+};
+
+const getMongoDb = () => {
+  if (!mongoose.connection.db) {
+    throw new Error("MongoDB chưa kết nối");
+  }
+  return mongoose.connection.db;
+};
+
+module.exports = { connectSQL, connectMongo, getPool, getMongoDb, sql };

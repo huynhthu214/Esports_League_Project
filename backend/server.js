@@ -1,19 +1,40 @@
-// backend/server.js
-const express = require('express');
-const cors = require('cors');
-const { connectDB } = require('./config/db');
+// backend/server.js - File gốc khởi chạy server
+require("dotenv").config();
+console.log("MONGODB_URI:", process.env.MONGODB_URI);
+const express = require("express");
+const cors = require("cors");
+const { connectSQL, connectMongo } = require("./config/db");
 
 const app = express();
-app.use(cors());
+const PORT = process.env.PORT || 5000;
+
+// ========================
+// MIDDLEWARE
+// ========================
+app.use(cors({ origin: "http://localhost:5173" })); // Vite default port
 app.use(express.json());
 
-// Khởi tạo Database
-connectDB();
+// ========================
+// ROUTES
+// ========================
+app.use("/api/auth", require("./routes/authRoutes"));
+app.use("/api", require("./routes/adminRoutes"));
+app.use("/api/analytics", require("./routes/analyticsRoutes"));
 
-// Gọi các file định tuyến (Routes)
-app.use('/api/analytics', require('./routes/analyticsRoutes'));
-// app.use('/api/auth', require('./routes/authRoutes')); // Thúy Vi 
-// app.use('/api/admin', require('./routes/adminRoutes'));
+// Health check
+app.get("/api/health", (req, res) =>
+  res.json({ status: "ok", time: new Date() }),
+);
 
-const PORT = 3000;
-app.listen(PORT, () => console.log(`🚀 Server chạy tại http://localhost:${PORT}`));
+// ========================
+// KHỞI ĐỘNG SERVER
+// ========================
+const start = async () => {
+  await connectSQL();
+  await connectMongo();
+  app.listen(PORT, () => {
+    console.log("Server chạy tại http://localhost:${PORT}");
+  });
+};
+
+start();

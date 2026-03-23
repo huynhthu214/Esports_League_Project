@@ -1,55 +1,69 @@
 // backend/controllers/matchController.js
-const sql = require('mssql');
-const { getMongoDb } = require('../config/db'); 
+const { getPool, getMongoDb, sql } = require("../config/db");
 
 exports.submitMatchResult = async (req, res) => {
-    const matchData = req.body; // JSON chứa cấu trúc trận đấu lồng nhau
-    const mongoDb = getMongoDb();
-    
-    // Khởi tạo Transaction cho MS SQL
-    const transaction = new sql.Transaction();
+  const matchData = req.body;
+  const mongoDb = getMongoDb();
+  const pool = getPool();
+  const transaction = new sql.Transaction(pool);
 
-    try {
-        // BƯỚC 1: LƯU VÀO MONGODB (NO-SQL)
-        const insertResult = await mongoDb.collection('match_stats').insertOne(matchData);
-        
-        // BƯỚC 2: CẬP NHẬT MS SQL BẰNG TRANSACTION
-        const winningTeam = matchData.teams.find(t => t.result === 'WIN').team_id;
-        const losingTeam = matchData.teams.find(t => t.result === 'LOSS').team_id;
+  let mongoInserted = false;
 
-        await transaction.begin();
-        const request = new sql.Request(transaction);
+  try {
+    // BƯỚC 1: Lưu vào MongoDB
+    await mongoDb.collection("match_stats").insertOne(matchData);
+    mongoInserted = true;
 
-        // Update Đội Thắng
-        await request.query(`
-            UPDATE TeamStandings 
-            SET Wins = Wins + 1 
-            WHERE TeamID = '${winningTeam}' AND SeasonID = '${matchData.season_id}'
-        `);
+    // BƯỚC 2: Cập nhật MS SQL bằng Transaction
+    const winningTeam = matchData.teams.find(
+      (t) => t.result === "WIN",
+    )?.team_id;
+    const losingTeam = matchData.teams.find(
+      (t) => t.result === "LOSS",
+    )?.team_id;
 
-        // Update Đội Thua
-        await request.query(`
-            UPDATE TeamStandings 
-            SET Losses = Losses + 1 
-            WHERE TeamID = '${losingTeam}' AND SeasonID = '${matchData.season_id}'
-        `);
-
-        // NẾU SQL CHẠY TỐT -> CHỐT GIAO DỊCH
-        await transaction.commit();
-        res.status(200).json({ message: "Đồng bộ thành công kết quả vào Mongo và MS SQL!" });
-
-    } catch (error) {
-        console.error("Lỗi Dual-write:", error);
-        
-        // BƯỚC 3: XỬ LÝ LỖI (COMPENSATING TRANSACTION)
-        if (transaction.isActive) {
-            await transaction.rollback(); // Hoàn tác bên MS SQL
-        }
-        // Xóa document vừa lưu vào Mongo để giữ tính nhất quán
-        if (matchData.match_id) {
-            await mongoDb.collection('match_stats').deleteOne({ match_id: matchData.match_id });
-        }
-
-        res.status(500).json({ error: "Lỗi hệ thống, đã rollback toàn bộ giao dịch." });
+    if (!winningTeam || !losingTeam) {
+      throw new Error("Dữ liệu trận đấu thiếu kết quả WIN/LOSS");
     }
+
+    await transaction.begin();
+
+    await new sql.Request(transaction)
+      .input("winTeam", sql.VarChar(10), winningTeam)
+      .input("seasonId", sql.VarChar(10), matchData.season_id)
+      .query(
+        "UPDATE TeamStandings SET Wins = Wins + 1 WHERE TeamID = @winTeam AND SeasonID = @seasonId",
+      );
+
+    await new sql.Request(transaction)
+      .input("loseTeam", sql.VarChar(10), losingTeam)
+      .input("seasonId", sql.VarChar(10), matchData.season_id)
+      .query(
+        "UPDATE TeamStandings SET Losses = Losses + 1 WHERE TeamID = @loseTeam AND SeasonID = @seasonId",
+      );
+
+    await transaction.commit();
+
+    res.status(200).json({
+      message: "Dual-write thành công: MongoDB + MS SQL đã cập nhật!",
+    });
+  } catch (error) {
+    console.error("Dual-write error:", error.message);
+
+    // Rollback SQL nếu đang trong transaction
+    try {
+      await transaction.rollback();
+    } catch (_) {}
+
+    // Compensating: xóa document MongoDB nếu đã insert
+    if (mongoInserted && matchData.match_id) {
+      await mongoDb
+        .collection("match_stats")
+        .deleteOne({ match_id: matchData.match_id });
+    }
+
+    res
+      .status(500)
+      .json({ error: "Dual-write thất bại, đã rollback toàn bộ." });
+  }
 };
