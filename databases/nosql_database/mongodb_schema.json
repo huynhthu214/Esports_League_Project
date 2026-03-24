@@ -4,6 +4,7 @@
   "match_date": {
     "$date": "2025-03-20T14:30:00Z"
   },
+  "match_duration_minutes": 35, 
   "teams": [
     {
       "team_id": "SGD",

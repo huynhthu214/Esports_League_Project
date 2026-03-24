@@ -4,15 +4,17 @@ const mongoose = require("mongoose");
 
 // Cấu hình MS SQL
 const sqlConfig = {
-  user: process.env.SQL_USER || "sa",
-  password: process.env.SQL_PASSWORD,
-  database: process.env.SQL_DATABASE || "EsportsLeagueDB",
-  server: process.env.SQL_SERVER || "localhost",
-  port: parseInt(process.env.SQL_PORT) || 1433,
-  options: { encrypt: false, trustServerCertificate: true },
+  user: "sa",
+  password: "123456", // Đảm bảo đúng pass bạn đã đổi
+  database: "EsportsLeagueDB", // ĐIỀN ĐÚNG TÊN DATABASE BẠN TẠO TRONG SSMS
+  server: "localhost", 
+  port: 1433,
+  options: { 
+      encrypt: false, 
+      trustServerCertificate: true 
+  },
   pool: { max: 10, min: 0, idleTimeoutMillis: 30000 },
 };
-
 let sqlPool = null;
 
 const connectSQL = async () => {

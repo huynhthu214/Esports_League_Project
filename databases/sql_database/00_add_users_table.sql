@@ -20,8 +20,8 @@ BEGIN
         CONSTRAINT UQ_Users_Username UNIQUE (Username)
     );
 
-    -- Tạo tài khoản admin mặc định (password: admin123)
-    -- bcrypt hash của "admin123" với salt=10
+    -- Tạo tài khoản admin mặc định (password: password)
+    -- bcrypt hash của "password" với salt=10
     INSERT INTO Users (Username, PasswordHash, Role) VALUES
     ('admin',   '$2b$10$92IXUNpkjO0rOQ5byMi.Ye4oKoEa3Ro9llC/.og/at2.uheWG/igi', 'ADMIN'),
     ('analyst', '$2b$10$92IXUNpkjO0rOQ5byMi.Ye4oKoEa3Ro9llC/.og/at2.uheWG/igi', 'ANALYST'),
