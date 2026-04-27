@@ -457,6 +457,199 @@ const removeFromRoster = async (req, res) => {
   }
 };
 
+// ================================================================
+// XÓA MỀM TUYỂN THỦ — PATCH /api/players/:id/deactivate
+// Set IsActive = 0 (ẩn đi, không xóa cứng trong database)
+// ================================================================
+const deactivatePlayer = async (req, res) => {
+  const { id } = req.params;
+
+  if (!id) {
+    return res.status(400).json({ message: 'Thiếu PlayerID.' });
+  }
+
+  try {
+    const pool = getPool();
+
+    const check = await pool.request()
+      .input('pid', sql.VarChar(10), id)
+      .query('SELECT PlayerID, Nickname, IsActive FROM Players WHERE PlayerID = @pid');
+
+    if (check.recordset.length === 0) {
+      return res.status(404).json({ message: `Không tìm thấy tuyển thủ ${id}.` });
+    }
+
+    const player = check.recordset[0];
+    if (!player.IsActive) {
+      return res.status(409).json({ message: `Tuyển thủ ${player.Nickname} đã bị ẩn từ trước.` });
+    }
+
+    await pool.request()
+      .input('pid', sql.VarChar(10), id)
+      .query('UPDATE Players SET IsActive = 0 WHERE PlayerID = @pid');
+
+    res.json({ message: `Đã ẩn tuyển thủ ${player.Nickname} (${id}) thành công.` });
+  } catch (err) {
+    console.error('deactivatePlayer:', err.message);
+    res.status(500).json({ message: 'Lỗi server khi ẩn tuyển thủ.' });
+  }
+};
+
+// ================================================================
+// KÍCH HOẠT LẠI TUYỂN THỦ — PATCH /api/players/:id/activate
+// ================================================================
+const activatePlayer = async (req, res) => {
+  const { id } = req.params;
+  try {
+    const pool = getPool();
+    await pool.request()
+      .input('pid', sql.VarChar(10), id)
+      .query('UPDATE Players SET IsActive = 1 WHERE PlayerID = @pid');
+    res.json({ message: `Đã kích hoạt lại tuyển thủ ${id}.` });
+  } catch (err) {
+    res.status(500).json({ message: 'Lỗi server.' });
+  }
+};
+
+// ================================================================
+// LẤY HỒ SƠ TUYỂN THỦ (Profile)
+// GET /api/players/:id/profile
+// ================================================================
+const getPlayerProfile = async (req, res) => {
+  const { id } = req.params;
+  try {
+    const pool = getPool();
+    // Lấy thông tin cơ bản
+    const playerResult = await pool.request()
+      .input('pid', sql.VarChar(10), id)
+      .query('SELECT PlayerID, Nickname, FullName, Position, IsActive FROM Players WHERE PlayerID = @pid');
+
+    if (playerResult.recordset.length === 0) {
+      return res.status(404).json({ message: 'Không tìm thấy tuyển thủ.' });
+    }
+    const playerInfo = playerResult.recordset[0];
+
+    // Lấy lịch sử chuyển nhượng của tuyển thủ này
+    const transferResult = await pool.request()
+      .input('pid', sql.VarChar(10), id)
+      .query(`
+        SELECT th.TransferDate, ft.ShortName AS FromTeam, tt.ShortName AS ToTeam, th.TransferFee, s.SeasonName
+        FROM TransferHistory th
+        LEFT JOIN Teams ft ON th.FromTeamID = ft.TeamID
+        LEFT JOIN Teams tt ON th.ToTeamID = tt.TeamID
+        LEFT JOIN Seasons s ON th.SeasonID = s.SeasonID
+        WHERE th.PlayerID = @pid
+        ORDER BY th.TransferDate DESC
+      `);
+
+    // Lấy tổng quan các mùa giải (dùng vw_Leaderboard_KDA hoặc bảng PlayerSeasonStats)
+    const statsResult = await pool.request()
+      .input('pid', sql.VarChar(10), id)
+      .query(`
+        SELECT SeasonID, SeasonName, TeamShort AS TeamName, TotalMatches, TotalKills, TotalDeaths, TotalAssists, AvgKDA, AvgGPM, WinRate
+        FROM vw_Leaderboard_KDA
+        WHERE PlayerID = @pid
+        ORDER BY SeasonID DESC
+      `);
+
+    res.json({
+      data: {
+        info: playerInfo,
+        transfers: transferResult.recordset,
+        seasonStats: statsResult.recordset
+      }
+    });
+  } catch (err) {
+    console.error('getPlayerProfile:', err.message);
+    res.status(500).json({ message: 'Lỗi server.' });
+  }
+};
+
+const getSeasonTeams = async (req, res) => {
+  const { seasonId } = req.query;
+  try {
+    const request = getPool().request();
+    let where = "WHERE st.Status = 'ACTIVE'";
+    if (seasonId) {
+      request.input("SeasonID", sql.VarChar(10), seasonId);
+      where += " AND st.SeasonID = @SeasonID";
+    }
+    const result = await request.query(`
+      SELECT
+        st.SeasonID, st.TeamID, st.Status,
+        t.TeamName, t.ShortName, t.Region,
+        s.SeasonName
+      FROM SeasonTeams st
+      JOIN Teams   t ON t.TeamID   = st.TeamID
+      JOIN Seasons s ON s.SeasonID = st.SeasonID
+      ${where}
+      ORDER BY t.TeamName
+    `);
+    res.json({ data: result.recordset });
+  } catch (err) {
+    console.error("getSeasonTeams:", err.message);
+    res.status(500).json({ message: "Lỗi khi lấy danh sách đội trong mùa giải." });
+  }
+};
+
+// ================================================================
+// POST /api/season-teams  (ADMIN ONLY)
+// Body: { seasonId: "SS2025", teamIds: ["SGD", "HNL", "FLC"] }
+// Gọi sp_RegisterTeamToSeason cho từng đội (không có player, chỉ thêm SeasonTeams)
+// ================================================================
+const registerSeasonTeams = async (req, res) => {
+  const { seasonId, teamIds } = req.body;
+
+  if (!seasonId || !Array.isArray(teamIds) || teamIds.length === 0) {
+    return res.status(400).json({ message: "Thiếu seasonId hoặc danh sách đội." });
+  }
+
+  try {
+    const pool = getPool();
+    const results = [];
+    const errors = [];
+
+    for (const teamId of teamIds) {
+      try {
+        // Dùng MERGE để tránh duplicate — không dùng SP vì SP kèm roster
+        await pool.request()
+          .input("SeasonID", sql.VarChar(10), seasonId)
+          .input("TeamID",   sql.VarChar(10), teamId)
+          .query(`
+            MERGE SeasonTeams AS target
+            USING (VALUES (@SeasonID, @TeamID)) AS source (SeasonID, TeamID)
+            ON target.SeasonID = source.SeasonID AND target.TeamID = source.TeamID
+            WHEN NOT MATCHED THEN
+              INSERT (SeasonID, TeamID, Status) VALUES (@SeasonID, @TeamID, 'ACTIVE')
+            WHEN MATCHED AND target.Status != 'ACTIVE' THEN
+              UPDATE SET target.Status = 'ACTIVE';
+          `);
+        results.push(teamId);
+      } catch (e) {
+        errors.push({ teamId, error: e.message });
+      }
+    }
+
+    if (results.length === 0) {
+      return res.status(400).json({
+        message: "Không thể đăng ký bất kỳ đội nào.",
+        errors
+      });
+    }
+
+    res.json({
+      message: `✅ Đã đăng ký ${results.length}/${teamIds.length} đội vào mùa ${seasonId}.`,
+      registered: results,
+      errors: errors.length > 0 ? errors : undefined
+    });
+  } catch (err) {
+    console.error("registerSeasonTeams:", err.message);
+    res.status(500).json({ message: err.message });
+  }
+};
+
+
+
 module.exports = {
   getSeasons,
   getTeams,
@@ -469,4 +662,9 @@ module.exports = {
   getTransferHistory,
   getPlayerLeaderboard,
   getTeamStandings,
+  deactivatePlayer,
+  activatePlayer,
+  getPlayerProfile,
+  getSeasonTeams,
+  registerSeasonTeams
 };

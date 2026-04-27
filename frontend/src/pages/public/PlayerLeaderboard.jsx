@@ -1,4 +1,5 @@
 import { useState, useEffect } from "react";
+import { Link } from "react-router-dom";
 import axiosClient from "../../api/axiosClient";
 
 const POSITIONS = ["", "Top", "Jungle", "Mid", "ADC", "Support"];
@@ -133,7 +134,9 @@ const PlayerLeaderboard = () => {
                         {MEDAL[row.KDA_Rank] || <span className="text-slate-500 text-sm font-bold">{row.KDA_Rank}</span>}
                       </td>
                       <td className="px-5 py-4 font-bold text-slate-200 group-hover:text-cyan-400 transition-colors">
-                        {row.Nickname}
+                        <Link to={`/players/${row.PlayerID}`} className="hover:underline">
+                          {row.Nickname}
+                        </Link>
                       </td>
                       <td className="px-5 py-4">
                         <span className="text-xs font-bold px-2.5 py-1 rounded-md bg-slate-800 text-slate-300 border border-slate-700">
