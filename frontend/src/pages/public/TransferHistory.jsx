@@ -1,160 +1,345 @@
-import { useState, useEffect } from 'react';
-import axiosClient from '../../api/axiosClient';
+import { useState, useEffect } from "react";
+import axiosClient from "../../api/axiosClient";
+
+const STYLE = `
+  @import url('https://fonts.googleapis.com/css2?family=Orbitron:wght@700;900&family=Rajdhani:wght@400;500;600;700&display=swap');
+  @keyframes fadeUp { from{opacity:0;transform:translateY(16px)} to{opacity:1;transform:translateY(0)} }
+  @keyframes spin { to{transform:rotate(360deg)} }
+  .fade-up { animation: fadeUp .4s ease both; }
+  .d1{animation-delay:.05s} .d2{animation-delay:.1s}
+  .spinner { animation: spin .8s linear infinite; border-radius:50%; border:2px solid rgba(52,211,153,.2); border-top-color:#34d399; width:16px; height:16px; display:inline-block; }
+`;
+
+const fmtDate = (d) =>
+  !d
+    ? "—"
+    : new Date(d).toLocaleDateString("vi-VN", {
+        day: "2-digit",
+        month: "2-digit",
+        year: "numeric",
+      });
+const fmtFee = (f) =>
+  !f || f === 0 ? "Free" : `${Number(f).toLocaleString("vi-VN")} ₫`;
+
+const POSITION_COLOR = {
+  Top: "#fb923c",
+  Jungle: "#34d399",
+  Mid: "#a78bfa",
+  ADC: "#f87171",
+  Support: "#38bdf8",
+};
 
 const TransferHistory = () => {
-  const [players, setPlayers] = useState([]);
   const [seasons, setSeasons] = useState([]);
-  const [search, setSearch] = useState('');
-  const [seasonId, setSeasonId] = useState('');
+  const [seasonId, setSeasonId] = useState("");
   const [transfers, setTransfers] = useState([]);
   const [loading, setLoading] = useState(false);
-  const [selectedPlayer, setSelectedPlayer] = useState('');
+  const [error, setError] = useState("");
 
-  useEffect(() => {
-    axiosClient.get('/players').then(r => setPlayers(r.data.data || [])).catch(() => {});
-    axiosClient.get('/seasons').then(r => setSeasons(r.data.data || [])).catch(() => {});
-    // Load tất cả chuyển nhượng lúc đầu
-    loadTransfers({});
-  }, []);
-
-  const loadTransfers = (params) => {
+  const fetchTransfers = (sid) => {
     setLoading(true);
-    axiosClient.get('/transfers', { params })
-      .then(r => setTransfers(r.data.data || []))
-      .catch(() => setTransfers([]))
+    setError("");
+    axiosClient
+      .get("/admin/transfers", { params: { seasonId: sid } })
+      .then((r) => setTransfers(r.data?.data || []))
+      .catch(() => setError("Không tải được lịch sử chuyển nhượng."))
       .finally(() => setLoading(false));
   };
 
-  const handleSearch = (e) => {
-    e.preventDefault();
-    const params = {};
-    if (selectedPlayer) params.playerId = selectedPlayer;
-    if (seasonId) params.seasonId = seasonId;
-    loadTransfers(params);
-  };
+  useEffect(() => {
+    axiosClient
+      .get("/admin/seasons")
+      .then((r) => {
+        const list = r.data?.data || [];
+        setSeasons(list);
+        const active = list.find((s) => s.Status === "ACTIVE") || list[0];
+        if (active) {
+          setSeasonId(active.SeasonID);
+          fetchTransfers(active.SeasonID);
+        } else setLoading(false);
+      })
+      .catch(() => {
+        setError("Không tải được mùa giải.");
+        setLoading(false);
+      });
+  }, []); // eslint-disable-line react-hooks/exhaustive-deps
 
-  const filteredBySearch = search
-    ? transfers.filter(t =>
-        t.PlayerNickname?.toLowerCase().includes(search.toLowerCase()) ||
-        t.FromTeamName?.toLowerCase().includes(search.toLowerCase()) ||
-        t.ToTeamName?.toLowerCase().includes(search.toLowerCase())
-      )
-    : transfers;
-
-  const formatDate = (dt) => dt ? new Date(dt).toLocaleDateString('vi-VN', { day: '2-digit', month: '2-digit', year: 'numeric' }) : '—';
-  const formatFee = (fee) => fee ? `${Number(fee).toLocaleString('vi-VN')} ₫` : 'Miễn phí';
-
-  const POSITION_COLOR = {
-    Top: 'bg-red-500/20 text-red-400 border-red-500/30',
-    Jungle: 'bg-green-500/20 text-green-400 border-green-500/30',
-    Mid: 'bg-blue-500/20 text-blue-400 border-blue-500/30',
-    ADC: 'bg-orange-500/20 text-orange-400 border-orange-500/30',
-    Support: 'bg-purple-500/20 text-purple-400 border-purple-500/30',
+  const handleSeasonChange = (e) => {
+    setSeasonId(e.target.value);
+    fetchTransfers(e.target.value);
   };
 
   return (
-    <div className="min-h-[calc(100vh-80px)] h-full flex-1 w-full bg-[#050c18] text-slate-200 p-6 font-sans relative overflow-hidden">
-      <div className="absolute top-[-10%] right-[-5%] w-[400px] h-[400px] bg-emerald-500/8 rounded-full blur-[130px] pointer-events-none"></div>
-      <div className="absolute bottom-[-10%] left-[-5%] w-[350px] h-[350px] bg-cyan-500/6 rounded-full blur-[120px] pointer-events-none"></div>
+    <div
+      className="min-h-screen relative overflow-x-hidden text-slate-200"
+      style={{
+        background: "#080c16",
+        fontFamily: "'Rajdhani','Segoe UI',sans-serif",
+      }}
+    >
+      <style>{STYLE}</style>
 
-      <div className="max-w-5xl mx-auto relative z-10">
+      <div className="absolute inset-0 pointer-events-none">
+        <div
+          className="absolute inset-0 opacity-[0.03]"
+          style={{
+            backgroundImage:
+              "linear-gradient(rgba(52,211,153,.8) 1px,transparent 1px),linear-gradient(90deg,rgba(52,211,153,.8) 1px,transparent 1px)",
+            backgroundSize: "40px 40px",
+          }}
+        />
+        <div
+          className="absolute top-0 left-0 w-[400px] h-80 rounded-full"
+          style={{
+            background:
+              "radial-gradient(ellipse,rgba(52,211,153,.08) 0%,transparent 70%)",
+          }}
+        />
+      </div>
+
+      <div className="relative z-10 max-w-5xl mx-auto px-4 sm:px-6 py-8">
         {/* Header */}
-        <div className="mb-8">
-          <h1 className="text-3xl font-black italic tracking-wider text-transparent bg-clip-text bg-gradient-to-r from-emerald-400 to-cyan-500 uppercase mb-2">
+        <div className="fade-up mb-6">
+          <div className="flex items-center gap-2 mb-1">
+            <div className="w-2 h-2 rounded-full bg-emerald-400 animate-pulse" />
+            <span
+              className="text-xs font-bold uppercase tracking-[0.25em]"
+              style={{ color: "rgba(52,211,153,.7)" }}
+            >
+              Chuyển Nhượng
+            </span>
+          </div>
+          <h1
+            className="text-3xl font-black uppercase text-white"
+            style={{
+              fontFamily: "'Orbitron',monospace",
+              textShadow: "0 0 30px rgba(52,211,153,.3)",
+            }}
+          >
             🔄 Lịch Sử Chuyển Nhượng
           </h1>
-          <p className="text-slate-400 text-sm">Tra cứu lịch sử di chuyển của tuyển thủ giữa các đội tuyển</p>
+          <p className="text-sm mt-1" style={{ color: "rgba(148,163,184,.6)" }}>
+            Các giao dịch chuyển nhượng tuyển thủ được thực hiện bằng Atomic SQL
+            Transaction.
+          </p>
         </div>
 
-        {/* Filter form */}
-        <form onSubmit={handleSearch} className="bg-slate-900/60 backdrop-blur-md p-5 rounded-2xl border border-slate-800 mb-6 flex flex-wrap gap-4 items-end">
-          <div className="flex-1 min-w-[180px]">
-            <label className="block text-xs font-bold text-slate-500 uppercase tracking-widest mb-2">Lọc theo tuyển thủ</label>
-            <select value={selectedPlayer} onChange={e => setSelectedPlayer(e.target.value)}
-              className="w-full bg-slate-950/80 border border-slate-700 text-slate-200 rounded-lg px-4 py-2.5 text-sm focus:outline-none focus:border-emerald-500">
-              <option value="">Tất cả tuyển thủ</option>
-              {players.map(p => <option key={p.PlayerID} value={p.PlayerID}>{p.Nickname} ({p.PlayerID})</option>)}
-            </select>
-          </div>
-          <div className="flex-1 min-w-[160px]">
-            <label className="block text-xs font-bold text-slate-500 uppercase tracking-widest mb-2">Lọc theo mùa</label>
-            <select value={seasonId} onChange={e => setSeasonId(e.target.value)}
-              className="w-full bg-slate-950/80 border border-slate-700 text-slate-200 rounded-lg px-4 py-2.5 text-sm focus:outline-none focus:border-emerald-500">
-              <option value="">Tất cả mùa</option>
-              {seasons.map(s => <option key={s.SeasonID} value={s.SeasonID}>{s.SeasonName}</option>)}
-            </select>
-          </div>
-          <button type="submit"
-            className="bg-emerald-600 hover:bg-emerald-500 text-white px-6 py-2.5 rounded-lg text-sm font-bold transition-all shadow-[0_0_15px_rgba(16,185,129,0.3)]">
-            🔍 Tìm kiếm
-          </button>
-        </form>
-
-        {/* Quick search */}
-        <div className="mb-5">
-          <input type="text" placeholder="Tìm theo tên tuyển thủ, đội..." value={search} onChange={e => setSearch(e.target.value)}
-            className="w-full bg-slate-900/60 border border-slate-800 text-slate-200 rounded-xl px-5 py-3 text-sm focus:outline-none focus:border-emerald-500 focus:ring-1 focus:ring-emerald-500/30 placeholder-slate-600" />
+        {/* Season selector */}
+        <div className="fade-up d1 flex items-center gap-3 mb-6 flex-wrap">
+          <select
+            value={seasonId}
+            onChange={handleSeasonChange}
+            className="text-sm font-semibold rounded-xl px-4 py-2.5 outline-none"
+            style={{
+              background: "rgba(13,17,30,.9)",
+              border: "1px solid rgba(52,211,153,.25)",
+              color: "#34d399",
+              fontFamily: "'Orbitron',monospace",
+              fontSize: "0.75rem",
+            }}
+          >
+            {seasons.map((s) => (
+              <option key={s.SeasonID} value={s.SeasonID}>
+                {s.SeasonName}
+              </option>
+            ))}
+          </select>
+          {loading && (
+            <div className="flex items-center gap-2">
+              <span className="spinner" />
+              <span
+                className="text-xs"
+                style={{ color: "rgba(148,163,184,.5)" }}
+              >
+                Đang tải...
+              </span>
+            </div>
+          )}
         </div>
 
-        {/* Results */}
-        {loading ? (
-          <div className="flex justify-center py-16">
-            <div className="animate-spin rounded-full h-12 w-12 border-t-2 border-b-2 border-emerald-500"></div>
+        {error && (
+          <div
+            className="mb-5 px-5 py-3 rounded-xl text-sm font-semibold"
+            style={{
+              background: "rgba(248,113,113,.08)",
+              border: "1px solid rgba(248,113,113,.25)",
+              color: "#f87171",
+            }}
+          >
+            ⚠️ {error}
           </div>
-        ) : filteredBySearch.length === 0 ? (
-          <div className="text-center py-16 text-slate-500">
-            Không tìm thấy lịch sử chuyển nhượng nào.
+        )}
+
+        {/* Stats summary */}
+        {transfers.length > 0 && (
+          <div className="fade-up d1 grid grid-cols-3 gap-3 mb-6">
+            {[
+              {
+                label: "Tổng giao dịch",
+                value: transfers.length,
+                color: "#34d399",
+              },
+              {
+                label: "Tổng phí",
+                value: fmtFee(
+                  transfers.reduce((s, t) => s + (t.TransferFee || 0), 0),
+                ),
+                color: "#fbbf24",
+              },
+              {
+                label: "Tuyển thủ",
+                value: new Set(transfers.map((t) => t.PlayerNickname)).size,
+                color: "#a78bfa",
+              },
+            ].map((s) => (
+              <div
+                key={s.label}
+                className="rounded-xl px-4 py-3 text-center"
+                style={{
+                  background: "rgba(13,17,30,.9)",
+                  border: `1px solid ${s.color}22`,
+                }}
+              >
+                <div
+                  className="text-xl font-black text-white"
+                  style={{ fontFamily: "'Orbitron',monospace" }}
+                >
+                  {s.value}
+                </div>
+                <div
+                  className="text-xs mt-0.5"
+                  style={{ color: "rgba(148,163,184,.5)" }}
+                >
+                  {s.label}
+                </div>
+              </div>
+            ))}
           </div>
-        ) : (
-          <div className="space-y-3">
-            <p className="text-xs text-slate-600 mb-4">{filteredBySearch.length} giao dịch chuyển nhượng</p>
-            {filteredBySearch.map(t => (
-              <div key={t.TransferID} className="bg-slate-900/60 backdrop-blur-xl border border-slate-800 rounded-2xl p-5 hover:border-emerald-700/30 transition-all">
-                <div className="flex flex-wrap items-center gap-4">
-                  {/* Player info */}
-                  <div className="flex items-center gap-3 flex-1 min-w-[200px]">
-                    <div className="w-10 h-10 rounded-full bg-gradient-to-br from-emerald-500/30 to-cyan-500/30 border border-slate-700 flex items-center justify-center font-black text-emerald-400">
-                      {t.PlayerNickname?.charAt(0).toUpperCase()}
+        )}
+
+        {!loading && transfers.length === 0 && !error && (
+          <div
+            className="fade-up text-center py-20"
+            style={{ color: "rgba(148,163,184,.4)" }}
+          >
+            <div className="text-4xl mb-3">🔄</div>
+            <div className="text-sm">
+              Chưa có giao dịch chuyển nhượng nào trong mùa này.
+            </div>
+          </div>
+        )}
+
+        {/* Transfer cards */}
+        <div className="flex flex-col gap-3">
+          {transfers.map((t, i) => {
+            const pc = POSITION_COLOR[t.Position] || "#94a3b8";
+            return (
+              <div
+                key={t.TransferID || i}
+                className="fade-up rounded-2xl px-5 py-4 relative overflow-hidden"
+                style={{
+                  background: "rgba(13,17,30,.9)",
+                  border: "1px solid rgba(52,211,153,.1)",
+                  animationDelay: `${i * 0.03 + 0.1}s`,
+                }}
+              >
+                <div
+                  className="absolute inset-0 pointer-events-none opacity-5"
+                  style={{
+                    background:
+                      "radial-gradient(circle at 0% 50%, #34d399, transparent 60%)",
+                  }}
+                />
+
+                <div className="flex items-center gap-4 flex-wrap">
+                  {/* Player */}
+                  <div className="flex items-center gap-3 flex-shrink-0">
+                    <div
+                      className="w-10 h-10 rounded-xl flex items-center justify-center text-sm font-black"
+                      style={{
+                        background: `${pc}18`,
+                        color: pc,
+                        border: `1px solid ${pc}30`,
+                      }}
+                    >
+                      {(t.PlayerNickname || "??").slice(0, 2).toUpperCase()}
                     </div>
                     <div>
-                      <div className="font-bold text-slate-200">{t.PlayerNickname}</div>
-                      <span className={`text-xs font-bold px-2 py-0.5 rounded-md border ${POSITION_COLOR[t.Position] || 'bg-slate-700 text-slate-400 border-slate-600'}`}>
+                      <div className="font-black text-white text-sm">
+                        {t.PlayerNickname}
+                      </div>
+                      <span
+                        className="text-xs px-2 py-0.5 rounded"
+                        style={{ background: `${pc}18`, color: pc }}
+                      >
                         {t.Position}
                       </span>
                     </div>
                   </div>
 
                   {/* Transfer arrow */}
-                  <div className="flex items-center gap-3 flex-1 min-w-[200px]">
-                    <div className="text-center">
-                      <div className="text-xs text-slate-500 mb-0.5">Từ</div>
-                      <div className="font-black text-red-400">{t.FromShort || t.FromTeamName}</div>
-                      <div className="text-xs text-slate-600">{t.FromTeamName}</div>
-                    </div>
-                    <div className="text-slate-600 font-black text-xl px-2">→</div>
-                    <div className="text-center">
-                      <div className="text-xs text-slate-500 mb-0.5">Đến</div>
-                      <div className="font-black text-emerald-400">{t.ToShort || t.ToTeamName}</div>
-                      <div className="text-xs text-slate-600">{t.ToTeamName}</div>
-                    </div>
+                  <div className="flex items-center gap-2 flex-1 justify-center min-w-[160px]">
+                    <span
+                      className="font-black text-sm px-3 py-1.5 rounded-lg"
+                      style={{
+                        background: "rgba(248,113,113,.12)",
+                        color: "#f87171",
+                        border: "1px solid rgba(248,113,113,.2)",
+                        fontFamily: "'Orbitron',monospace",
+                      }}
+                    >
+                      {t.FromShort}
+                    </span>
+                    <span className="text-lg">→</span>
+                    <span
+                      className="font-black text-sm px-3 py-1.5 rounded-lg"
+                      style={{
+                        background: "rgba(52,211,153,.12)",
+                        color: "#34d399",
+                        border: "1px solid rgba(52,211,153,.2)",
+                        fontFamily: "'Orbitron',monospace",
+                      }}
+                    >
+                      {t.ToShort}
+                    </span>
                   </div>
 
-                  {/* Meta */}
-                  <div className="text-right shrink-0">
-                    <div className="text-xs text-slate-400">{formatDate(t.TransferDate)}</div>
-                    <div className="text-xs text-amber-400 font-semibold mt-0.5">{formatFee(t.TransferFee)}</div>
-                    {t.SeasonName && <div className="text-xs text-slate-600 mt-0.5">{t.SeasonName}</div>}
-                    {t.Reason && (
-                      <div className="text-xs text-slate-500 mt-1 max-w-[160px] text-right truncate" title={t.Reason}>
-                        📝 {t.Reason}
+                  {/* Fee + Date */}
+                  <div className="flex items-center gap-4 ml-auto flex-shrink-0">
+                    <div className="text-right">
+                      <div
+                        className="text-xs font-semibold"
+                        style={{ color: "#fbbf24" }}
+                      >
+                        {fmtFee(t.TransferFee)}
                       </div>
-                    )}
+                      <div
+                        className="text-xs"
+                        style={{ color: "rgba(148,163,184,.4)" }}
+                      >
+                        {fmtDate(t.TransferDate)}
+                      </div>
+                    </div>
                   </div>
                 </div>
+
+                {/* Reason */}
+                {t.Reason && (
+                  <div
+                    className="mt-3 text-xs px-3 py-2 rounded-lg"
+                    style={{
+                      background: "rgba(148,163,184,.05)",
+                      color: "rgba(148,163,184,.6)",
+                      borderLeft: "2px solid rgba(148,163,184,.2)",
+                    }}
+                  >
+                    {t.Reason}
+                  </div>
+                )}
               </div>
-            ))}
-          </div>
-        )}
+            );
+          })}
+        </div>
       </div>
     </div>
   );

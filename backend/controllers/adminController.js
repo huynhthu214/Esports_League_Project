@@ -465,33 +465,43 @@ const deactivatePlayer = async (req, res) => {
   const { id } = req.params;
 
   if (!id) {
-    return res.status(400).json({ message: 'Thiếu PlayerID.' });
+    return res.status(400).json({ message: "Thiếu PlayerID." });
   }
 
   try {
     const pool = getPool();
 
-    const check = await pool.request()
-      .input('pid', sql.VarChar(10), id)
-      .query('SELECT PlayerID, Nickname, IsActive FROM Players WHERE PlayerID = @pid');
+    const check = await pool
+      .request()
+      .input("pid", sql.VarChar(10), id)
+      .query(
+        "SELECT PlayerID, Nickname, IsActive FROM Players WHERE PlayerID = @pid",
+      );
 
     if (check.recordset.length === 0) {
-      return res.status(404).json({ message: `Không tìm thấy tuyển thủ ${id}.` });
+      return res
+        .status(404)
+        .json({ message: `Không tìm thấy tuyển thủ ${id}.` });
     }
 
     const player = check.recordset[0];
     if (!player.IsActive) {
-      return res.status(409).json({ message: `Tuyển thủ ${player.Nickname} đã bị ẩn từ trước.` });
+      return res
+        .status(409)
+        .json({ message: `Tuyển thủ ${player.Nickname} đã bị ẩn từ trước.` });
     }
 
-    await pool.request()
-      .input('pid', sql.VarChar(10), id)
-      .query('UPDATE Players SET IsActive = 0 WHERE PlayerID = @pid');
+    await pool
+      .request()
+      .input("pid", sql.VarChar(10), id)
+      .query("UPDATE Players SET IsActive = 0 WHERE PlayerID = @pid");
 
-    res.json({ message: `Đã ẩn tuyển thủ ${player.Nickname} (${id}) thành công.` });
+    res.json({
+      message: `Đã ẩn tuyển thủ ${player.Nickname} (${id}) thành công.`,
+    });
   } catch (err) {
-    console.error('deactivatePlayer:', err.message);
-    res.status(500).json({ message: 'Lỗi server khi ẩn tuyển thủ.' });
+    console.error("deactivatePlayer:", err.message);
+    res.status(500).json({ message: "Lỗi server khi ẩn tuyển thủ." });
   }
 };
 
@@ -502,12 +512,13 @@ const activatePlayer = async (req, res) => {
   const { id } = req.params;
   try {
     const pool = getPool();
-    await pool.request()
-      .input('pid', sql.VarChar(10), id)
-      .query('UPDATE Players SET IsActive = 1 WHERE PlayerID = @pid');
+    await pool
+      .request()
+      .input("pid", sql.VarChar(10), id)
+      .query("UPDATE Players SET IsActive = 1 WHERE PlayerID = @pid");
     res.json({ message: `Đã kích hoạt lại tuyển thủ ${id}.` });
   } catch (err) {
-    res.status(500).json({ message: 'Lỗi server.' });
+    res.status(500).json({ message: "Lỗi server." });
   }
 };
 
@@ -520,19 +531,22 @@ const getPlayerProfile = async (req, res) => {
   try {
     const pool = getPool();
     // Lấy thông tin cơ bản
-    const playerResult = await pool.request()
-      .input('pid', sql.VarChar(10), id)
-      .query('SELECT PlayerID, Nickname, FullName, Position, IsActive FROM Players WHERE PlayerID = @pid');
+    const playerResult = await pool
+      .request()
+      .input("pid", sql.VarChar(10), id)
+      .query(
+        "SELECT PlayerID, Nickname, FullName, Position, IsActive FROM Players WHERE PlayerID = @pid",
+      );
 
     if (playerResult.recordset.length === 0) {
-      return res.status(404).json({ message: 'Không tìm thấy tuyển thủ.' });
+      return res.status(404).json({ message: "Không tìm thấy tuyển thủ." });
     }
     const playerInfo = playerResult.recordset[0];
 
     // Lấy lịch sử chuyển nhượng của tuyển thủ này
-    const transferResult = await pool.request()
-      .input('pid', sql.VarChar(10), id)
-      .query(`
+    const transferResult = await pool
+      .request()
+      .input("pid", sql.VarChar(10), id).query(`
         SELECT th.TransferDate, ft.ShortName AS FromTeam, tt.ShortName AS ToTeam, th.TransferFee, s.SeasonName
         FROM TransferHistory th
         LEFT JOIN Teams ft ON th.FromTeamID = ft.TeamID
@@ -543,8 +557,7 @@ const getPlayerProfile = async (req, res) => {
       `);
 
     // Lấy tổng quan các mùa giải (dùng vw_Leaderboard_KDA hoặc bảng PlayerSeasonStats)
-    const statsResult = await pool.request()
-      .input('pid', sql.VarChar(10), id)
+    const statsResult = await pool.request().input("pid", sql.VarChar(10), id)
       .query(`
         SELECT SeasonID, SeasonName, TeamShort AS TeamName, TotalMatches, TotalKills, TotalDeaths, TotalAssists, AvgKDA, AvgGPM, WinRate
         FROM vw_Leaderboard_KDA
@@ -556,12 +569,12 @@ const getPlayerProfile = async (req, res) => {
       data: {
         info: playerInfo,
         transfers: transferResult.recordset,
-        seasonStats: statsResult.recordset
-      }
+        seasonStats: statsResult.recordset,
+      },
     });
   } catch (err) {
-    console.error('getPlayerProfile:', err.message);
-    res.status(500).json({ message: 'Lỗi server.' });
+    console.error("getPlayerProfile:", err.message);
+    res.status(500).json({ message: "Lỗi server." });
   }
 };
 
@@ -588,7 +601,9 @@ const getSeasonTeams = async (req, res) => {
     res.json({ data: result.recordset });
   } catch (err) {
     console.error("getSeasonTeams:", err.message);
-    res.status(500).json({ message: "Lỗi khi lấy danh sách đội trong mùa giải." });
+    res
+      .status(500)
+      .json({ message: "Lỗi khi lấy danh sách đội trong mùa giải." });
   }
 };
 
@@ -601,7 +616,9 @@ const registerSeasonTeams = async (req, res) => {
   const { seasonId, teamIds } = req.body;
 
   if (!seasonId || !Array.isArray(teamIds) || teamIds.length === 0) {
-    return res.status(400).json({ message: "Thiếu seasonId hoặc danh sách đội." });
+    return res
+      .status(400)
+      .json({ message: "Thiếu seasonId hoặc danh sách đội." });
   }
 
   try {
@@ -612,10 +629,10 @@ const registerSeasonTeams = async (req, res) => {
     for (const teamId of teamIds) {
       try {
         // Dùng MERGE để tránh duplicate — không dùng SP vì SP kèm roster
-        await pool.request()
+        await pool
+          .request()
           .input("SeasonID", sql.VarChar(10), seasonId)
-          .input("TeamID",   sql.VarChar(10), teamId)
-          .query(`
+          .input("TeamID", sql.VarChar(10), teamId).query(`
             MERGE SeasonTeams AS target
             USING (VALUES (@SeasonID, @TeamID)) AS source (SeasonID, TeamID)
             ON target.SeasonID = source.SeasonID AND target.TeamID = source.TeamID
@@ -633,22 +650,20 @@ const registerSeasonTeams = async (req, res) => {
     if (results.length === 0) {
       return res.status(400).json({
         message: "Không thể đăng ký bất kỳ đội nào.",
-        errors
+        errors,
       });
     }
 
     res.json({
       message: `✅ Đã đăng ký ${results.length}/${teamIds.length} đội vào mùa ${seasonId}.`,
       registered: results,
-      errors: errors.length > 0 ? errors : undefined
+      errors: errors.length > 0 ? errors : undefined,
     });
   } catch (err) {
     console.error("registerSeasonTeams:", err.message);
     res.status(500).json({ message: err.message });
   }
 };
-
-
 
 module.exports = {
   getSeasons,
@@ -666,5 +681,5 @@ module.exports = {
   activatePlayer,
   getPlayerProfile,
   getSeasonTeams,
-  registerSeasonTeams
+  registerSeasonTeams,
 };

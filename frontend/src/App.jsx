@@ -36,7 +36,7 @@ import ComparePlayers from "./pages/analyst/ComparePlayers";
 import TeamH2H from "./pages/analyst/TeamH2H";
 import MetaTrends from "./pages/analyst/MetaTrends";
 import SeasonReport from "./pages/analyst/SeasonReport";
-import MatchPredictor from "./pages/analyst/MatchPredictor";
+import PredictMatch from "./pages/analyst/PredictMatch";
 
 // Layout với Navbar + Sidebar
 const AppLayout = ({ children }) => (
@@ -66,7 +66,10 @@ function App() {
                 <Routes>
                   {/* ── PUBLIC ── */}
                   <Route index element={<Home />} />
-                  <Route path="leaderboard/players" element={<PlayerLeaderboard />} />
+                  <Route
+                    path="leaderboard/players"
+                    element={<PlayerLeaderboard />}
+                  />
                   <Route path="players/:id" element={<PlayerProfile />} />
                   <Route path="standings" element={<TeamStandings />} />
                   <Route path="schedule" element={<MatchSchedule />} />
@@ -75,23 +78,121 @@ function App() {
                   <Route path="transfers" element={<TransferHistory />} />
 
                   {/* ── ADMIN ONLY ── */}
-                  <Route path="admin" element={<ProtectedRoute requiredRole="ADMIN"><AdminDashboard /></ProtectedRoute>} />
-                  <Route path="admin/season" element={<ProtectedRoute requiredRole="ADMIN"><SeasonForm /></ProtectedRoute>} />
-                  <Route path="admin/season-teams" element={<ProtectedRoute requiredRole="ADMIN"><SeasonTeamForm /></ProtectedRoute>} />
-                  <Route path="admin/roster" element={<ProtectedRoute requiredRole="ADMIN"><RosterForm /></ProtectedRoute>} />
-                  <Route path="admin/transfer" element={<ProtectedRoute requiredRole="ADMIN"><TransferForm /></ProtectedRoute>} />
-                  <Route path="admin/roster-view" element={<ProtectedRoute requiredRole="ADMIN"><RosterViewer /></ProtectedRoute>} />
-                  <Route path="admin/match" element={<ProtectedRoute requiredRole="ADMIN"><MatchResultForm /></ProtectedRoute>} />
-                  <Route path="admin/players" element={<ProtectedRoute requiredRole="ADMIN"><PlayerManagement /></ProtectedRoute>} />
+                  <Route
+                    path="admin"
+                    element={
+                      <ProtectedRoute requiredRole="ADMIN">
+                        <AdminDashboard />
+                      </ProtectedRoute>
+                    }
+                  />
+                  <Route
+                    path="admin/season"
+                    element={
+                      <ProtectedRoute requiredRole="ADMIN">
+                        <SeasonForm />
+                      </ProtectedRoute>
+                    }
+                  />
+                  <Route
+                    path="admin/season-teams"
+                    element={
+                      <ProtectedRoute requiredRole="ADMIN">
+                        <SeasonTeamForm />
+                      </ProtectedRoute>
+                    }
+                  />
+                  <Route
+                    path="admin/roster"
+                    element={
+                      <ProtectedRoute requiredRole="ADMIN">
+                        <RosterForm />
+                      </ProtectedRoute>
+                    }
+                  />
+                  <Route
+                    path="admin/transfer"
+                    element={
+                      <ProtectedRoute requiredRole="ADMIN">
+                        <TransferForm />
+                      </ProtectedRoute>
+                    }
+                  />
+                  <Route
+                    path="admin/roster-view"
+                    element={
+                      <ProtectedRoute requiredRole="ADMIN">
+                        <RosterViewer />
+                      </ProtectedRoute>
+                    }
+                  />
+                  <Route
+                    path="admin/match"
+                    element={
+                      <ProtectedRoute requiredRole="ADMIN">
+                        <MatchResultForm />
+                      </ProtectedRoute>
+                    }
+                  />
+                  <Route
+                    path="admin/players"
+                    element={
+                      <ProtectedRoute requiredRole="ADMIN">
+                        <PlayerManagement />
+                      </ProtectedRoute>
+                    }
+                  />
 
                   {/* ── ANALYST / COACH / ADMIN ── */}
-                  <Route path="analyst" element={<ProtectedRoute requiredRole="ANALYST"><AnalystDashboard /></ProtectedRoute>} />
-                  <Route path="analyst/form" element={<ProtectedRoute requiredRole="ANALYST"><PlayerFormChart /></ProtectedRoute>} />
-                  <Route path="analyst/compare" element={<ProtectedRoute requiredRole="ANALYST"><ComparePlayers /></ProtectedRoute>} />
-                  <Route path="analyst/h2h" element={<ProtectedRoute requiredRole="ANALYST"><TeamH2H /></ProtectedRoute>} />
-                  <Route path="analyst/meta" element={<ProtectedRoute requiredRole="ANALYST"><MetaTrends /></ProtectedRoute>} />
-                  <Route path="analyst/report" element={<ProtectedRoute requiredRole="ANALYST"><SeasonReport /></ProtectedRoute>} />
-                  <Route path="analyst/predict" element={<ProtectedRoute requiredRole="ANALYST"><MatchPredictor /></ProtectedRoute>} />
+                  <Route
+                    path="analyst"
+                    element={
+                      <ProtectedRoute requiredRole="ANALYST">
+                        <AnalystDashboard />
+                      </ProtectedRoute>
+                    }
+                  />
+                  <Route
+                    path="analyst/form"
+                    element={
+                      <ProtectedRoute requiredRole="ANALYST">
+                        <PlayerFormChart />
+                      </ProtectedRoute>
+                    }
+                  />
+                  <Route
+                    path="analyst/compare"
+                    element={
+                      <ProtectedRoute requiredRole="ANALYST">
+                        <ComparePlayers />
+                      </ProtectedRoute>
+                    }
+                  />
+                  <Route
+                    path="analyst/h2h"
+                    element={
+                      <ProtectedRoute requiredRole="ANALYST">
+                        <TeamH2H />
+                      </ProtectedRoute>
+                    }
+                  />
+                  <Route
+                    path="analyst/meta"
+                    element={
+                      <ProtectedRoute requiredRole="ANALYST">
+                        <MetaTrends />
+                      </ProtectedRoute>
+                    }
+                  />
+                  <Route
+                    path="analyst/report"
+                    element={
+                      <ProtectedRoute requiredRole="ANALYST">
+                        <SeasonReport />
+                      </ProtectedRoute>
+                    }
+                  />
+                  <Route path="analyst/predict" element={<PredictMatch />} />
 
                   <Route path="*" element={<Navigate to="/" replace />} />
                 </Routes>

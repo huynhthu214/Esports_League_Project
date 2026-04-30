@@ -2,7 +2,8 @@
 const express = require("express");
 const router = express.Router();
 const { verifyToken, requireAdmin } = require("../middleware/authMiddleware");
-const matchController = require('../controllers/matchController');
+const matchController = require("../controllers/matchController");
+const { getDashboardStats } = require("../controllers/dashboardController");
 const {
   getSeasons,
   getTeams,
@@ -15,9 +16,9 @@ const {
   getTransferHistory,
   getPlayerLeaderboard,
   getTeamStandings,
-  deactivatePlayer,
-  activatePlayer,
-  getPlayerProfile,
+  // deactivatePlayer,
+  // activatePlayer,
+  // getPlayerProfile,
 } = require("../controllers/adminController");
 
 // ── PUBLIC (không cần đăng nhập)
@@ -25,7 +26,7 @@ const {
 router.get("/seasons", getSeasons);
 router.get("/teams", getTeams);
 router.get("/players", getPlayers);
-router.get("/players/:id/profile", getPlayerProfile);
+// router.get("/players/:id/profile", getPlayerProfile);
 
 // Leaderboards — fan cũng xem được
 router.get("/leaderboards/players", getPlayerLeaderboard);
@@ -43,14 +44,30 @@ router.get("/matches/history", matchController.getMatchHistory);
 router.get("/matches/:matchId/detail", matchController.getMatchDetail);
 
 // ── ADMIN ONLY
+router.get("/dashboard", getDashboardStats);
 router.post("/seasons", verifyToken, requireAdmin, createSeason);
 router.post("/rosters", verifyToken, requireAdmin, registerRoster);
 router.post("/transfers", verifyToken, requireAdmin, transferPlayer);
 router.patch("/rosters/remove", verifyToken, requireAdmin, removeFromRoster);
-router.patch("/players/:id/deactivate", verifyToken, requireAdmin, deactivatePlayer);
-router.patch("/players/:id/activate", verifyToken, requireAdmin, activatePlayer);
+// router.patch(
+//   "/players/:id/deactivate",
+//   verifyToken,
+//   requireAdmin,
+//   deactivatePlayer,
+// );
+// router.patch(
+//   "/players/:id/activate",
+//   verifyToken,
+//   requireAdmin,
+//   activatePlayer,
+// );
 
 // Nhập kết quả trận đấu (chỉ Admin)
-router.post('/matches', verifyToken, requireAdmin, matchController.submitMatchResult);
+router.post(
+  "/matches",
+  verifyToken,
+  requireAdmin,
+  matchController.submitMatchResult,
+);
 
 module.exports = router;

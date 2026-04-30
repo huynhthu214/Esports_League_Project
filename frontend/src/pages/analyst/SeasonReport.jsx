@@ -1,192 +1,412 @@
-import React, { useState, useEffect } from 'react';
-import axiosClient from '../../api/axiosClient';
+import { useState, useEffect } from "react";
+import axiosClient from "../../api/axiosClient";
+
+const STYLE = `
+  @import url('https://fonts.googleapis.com/css2?family=Orbitron:wght@700;900&family=Rajdhani:wght@400;500;600;700&display=swap');
+  @keyframes fadeUp { from{opacity:0;transform:translateY(16px)} to{opacity:1;transform:translateY(0)} }
+  @keyframes spin { to{transform:rotate(360deg)} }
+  .fade-up { animation: fadeUp .4s ease both; }
+  .d1{animation-delay:.05s}.d2{animation-delay:.1s}.d3{animation-delay:.15s}.d4{animation-delay:.2s}
+  .spinner { animation: spin .8s linear infinite; border-radius:50%; border:2px solid rgba(251,191,36,.2); border-top-color:#fbbf24; width:18px; height:18px; display:inline-block; }
+`;
 
 const SeasonReport = () => {
   const [seasons, setSeasons] = useState([]);
-  const [seasonId, setSeasonId] = useState('');
+  const [seasonId, setSeasonId] = useState("");
   const [report, setReport] = useState(null);
   const [loading, setLoading] = useState(false);
-  const [pdfLoading, setPdfLoading] = useState(false);
-  const [error, setError] = useState('');
+  const [error, setError] = useState("");
 
-  useEffect(() => {
-    axiosClient.get('/seasons').then(r => {
-      const data = r.data.data || [];
-      setSeasons(data);
-      if (data.length > 0) setSeasonId(data[0].SeasonID);
-    }).catch(() => {});
-  }, []);
-
-  useEffect(() => {
-    if (!seasonId) return;
-    loadReport();
-  }, [seasonId]);
-
-  const loadReport = () => {
+  const fetchReport = (sid) => {
     setLoading(true);
-    setError('');
-    axiosClient.get(`/analytics/reports/season/${seasonId}`)
-      .then(r => setReport(r.data))
-      .catch(err => setError(err.response?.data?.error || 'Không thể tải báo cáo.'))
+    setError("");
+    setReport(null);
+    axiosClient
+      .get(`/analytics/reports/season/${sid}`)
+      .then((r) => setReport(r.data))
+      .catch(() => setError("Không tải được báo cáo. Kiểm tra SQL + MongoDB."))
       .finally(() => setLoading(false));
   };
 
-  const downloadPDF = async () => {
-    setPdfLoading(true);
-    try {
-      const response = await axiosClient.get(`/analytics/reports/season/${seasonId}/pdf`, { responseType: 'blob' });
-      const url = window.URL.createObjectURL(new Blob([response.data], { type: 'application/pdf' }));
-      const link = document.createElement('a');
-      link.href = url;
-      link.setAttribute('download', `BaoCao_${seasonId}.pdf`);
-      document.body.appendChild(link);
-      link.click();
-      link.remove();
-      window.URL.revokeObjectURL(url);
-    } catch {
-      alert('Lỗi khi xuất PDF. Vui lòng thử lại.');
-    } finally {
-      setPdfLoading(false);
-    }
+  useEffect(() => {
+    axiosClient
+      .get("/admin/seasons")
+      .then((r) => {
+        const list = r.data?.data || [];
+        setSeasons(list);
+        const active = list.find((s) => s.Status === "ACTIVE") || list[0];
+        if (active) {
+          setSeasonId(active.SeasonID);
+          fetchReport(active.SeasonID);
+        } else setLoading(false);
+      })
+      .catch(() => setLoading(false));
+  }, []); // eslint-disable-line
+
+  const handleSeasonChange = (e) => {
+    setSeasonId(e.target.value);
+    fetchReport(e.target.value);
   };
 
-  const currentSeason = seasons.find(s => s.SeasonID === seasonId);
-
   return (
-    <div className="min-h-[calc(100vh-80px)] h-full flex-1 w-full bg-[#050c18] text-slate-200 p-6 font-sans relative overflow-hidden">
-      <div className="absolute top-[-10%] right-[-5%] w-[400px] h-[400px] bg-amber-500/8 rounded-full blur-[130px] pointer-events-none"></div>
-
-      <div className="max-w-5xl mx-auto relative z-10">
-        {/* Header */}
-        <div className="flex flex-wrap items-center justify-between gap-4 mb-8 bg-slate-900/60 backdrop-blur-md p-6 rounded-2xl border border-slate-800">
-          <div>
-            <h1 className="text-3xl font-black italic tracking-wider text-transparent bg-clip-text bg-gradient-to-r from-amber-400 to-yellow-500 uppercase mb-1">
-              📊 Báo Cáo Tổng Quan Mùa Giải
-            </h1>
-            <p className="text-slate-400 text-sm">Tổng hợp dữ liệu từ MongoDB & SQL Server</p>
+    <div
+      className="min-h-screen relative overflow-x-hidden text-slate-200"
+      style={{
+        background: "#080c16",
+        fontFamily: "'Rajdhani','Segoe UI',sans-serif",
+      }}
+    >
+      <style>{STYLE}</style>
+      <div className="absolute inset-0 pointer-events-none">
+        <div
+          className="absolute inset-0 opacity-[0.03]"
+          style={{
+            backgroundImage:
+              "linear-gradient(rgba(251,191,36,.8) 1px,transparent 1px),linear-gradient(90deg,rgba(251,191,36,.8) 1px,transparent 1px)",
+            backgroundSize: "40px 40px",
+          }}
+        />
+        <div
+          className="absolute top-0 right-1/4 w-[400px] h-80 rounded-full"
+          style={{
+            background:
+              "radial-gradient(ellipse,rgba(251,191,36,.08) 0%,transparent 70%)",
+          }}
+        />
+      </div>
+      <div className="relative z-10 max-w-5xl mx-auto px-4 sm:px-6 py-8">
+        <div className="fade-up mb-6">
+          <div className="flex items-center gap-2 mb-1">
+            <div className="w-2 h-2 rounded-full bg-yellow-400 animate-pulse" />
+            <span
+              className="text-xs font-bold uppercase tracking-[0.25em]"
+              style={{ color: "rgba(251,191,36,.7)" }}
+            >
+              SQL + MongoDB
+            </span>
           </div>
-          <div className="flex gap-3 items-center">
-            <select value={seasonId} onChange={e => setSeasonId(e.target.value)}
-              className="bg-slate-950/80 border border-slate-700 text-amber-300 rounded-lg px-4 py-2 text-sm font-semibold focus:outline-none focus:border-amber-500">
-              {seasons.map(s => <option key={s.SeasonID} value={s.SeasonID}>{s.SeasonName}</option>)}
-            </select>
-            {report && (
-              <button onClick={downloadPDF} disabled={pdfLoading}
-                className="flex items-center gap-2 bg-red-600/80 hover:bg-red-600 text-white px-4 py-2 rounded-lg text-sm font-bold transition-all disabled:opacity-50 shadow-[0_0_15px_rgba(239,68,68,0.2)]">
-                {pdfLoading ? '⏳' : '📄'} Xuất PDF
-              </button>
-            )}
-          </div>
+          <h1
+            className="text-3xl font-black uppercase text-white"
+            style={{ fontFamily: "'Orbitron',monospace" }}
+          >
+            📋 Báo Cáo Mùa Giải
+          </h1>
+          <p className="text-sm mt-1" style={{ color: "rgba(148,163,184,.6)" }}>
+            Tổng hợp số liệu SQL (standings, leaderboard) + MongoDB (trận đấu,
+            tướng).
+          </p>
         </div>
-
+        <div className="fade-up flex gap-3 mb-6 flex-wrap items-center">
+          <select
+            value={seasonId}
+            onChange={handleSeasonChange}
+            className="text-sm font-semibold rounded-xl px-4 py-2.5 outline-none"
+            style={{
+              background: "rgba(13,17,30,.9)",
+              border: "1px solid rgba(251,191,36,.25)",
+              color: "#fbbf24",
+              fontFamily: "'Orbitron',monospace",
+              fontSize: "0.72rem",
+            }}
+          >
+            <option value="">-- Chọn mùa giải --</option>
+            {seasons.map((s) => (
+              <option key={s.SeasonID} value={s.SeasonID}>
+                {s.SeasonName}
+              </option>
+            ))}
+          </select>
+          {loading && (
+            <div className="flex items-center gap-2">
+              <span className="spinner" />
+              <span
+                className="text-xs"
+                style={{ color: "rgba(148,163,184,.5)" }}
+              >
+                Đang tải...
+              </span>
+            </div>
+          )}
+        </div>
         {error && (
-          <div className="mb-6 p-4 bg-red-900/20 border border-red-500/30 rounded-xl text-red-400 text-sm">{error}</div>
-        )}
-
-        {loading ? (
-          <div className="flex justify-center py-20">
-            <div className="animate-spin rounded-full h-14 w-14 border-t-2 border-b-2 border-amber-500"></div>
+          <div
+            className="fade-up mb-5 px-5 py-3 rounded-xl text-sm"
+            style={{
+              background: "rgba(248,113,113,.08)",
+              border: "1px solid rgba(248,113,113,.25)",
+              color: "#f87171",
+            }}
+          >
+            ⚠️ {error}
           </div>
-        ) : report && (
-          <div className="space-y-6">
-            {/* Overview stats */}
-            <div className="grid sm:grid-cols-3 gap-4">
-              {[
-                { label: 'Tổng trận thi đấu', value: report.total_matches_played, icon: '⚔️', color: 'text-cyan-400', bgColor: 'from-cyan-500/10 to-cyan-500/5' },
-                { label: 'Tổng mạng hạ gục', value: (report.total_kills || 0).toLocaleString(), icon: '💀', color: 'text-red-400', bgColor: 'from-red-500/10 to-red-500/5' },
-                { label: 'TB mạng/trận', value: report.avg_kills_per_match, icon: '🔥', color: 'text-amber-400', bgColor: 'from-amber-500/10 to-amber-500/5' },
-              ].map((s, i) => (
-                <div key={i} className={`bg-gradient-to-br ${s.bgColor} border border-slate-800 rounded-2xl p-5`}>
-                  <div className="text-3xl mb-2">{s.icon}</div>
-                  <div className={`text-3xl font-black ${s.color}`}>{s.value}</div>
-                  <div className="text-sm text-slate-500 mt-1">{s.label}</div>
-                </div>
-              ))}
+        )}
+        {report && (
+          <>
+            {/* Source badges */}
+            <div className="fade-up flex gap-2 mb-5 flex-wrap">
+              <span
+                className="text-xs px-3 py-1 rounded-full font-bold"
+                style={{
+                  background: "rgba(56,189,248,.12)",
+                  color: "#38bdf8",
+                  border: "1px solid rgba(56,189,248,.25)",
+                }}
+              >
+                🗄️ SQL Server — Standings & KDA
+              </span>
+              <span
+                className="text-xs px-3 py-1 rounded-full font-bold"
+                style={{
+                  background: "rgba(52,211,153,.12)",
+                  color: "#34d399",
+                  border: "1px solid rgba(52,211,153,.25)",
+                }}
+              >
+                🍃 MongoDB — Trận đấu & Tướng
+              </span>
+              <span
+                className="text-xs px-3 py-1 rounded-full font-bold"
+                style={{
+                  background: "rgba(251,191,36,.12)",
+                  color: "#fbbf24",
+                  border: "1px solid rgba(251,191,36,.25)",
+                }}
+              >
+                ⚡ Tổng trận MongoDB: {report.total_matches_mongo}
+              </span>
             </div>
 
-            {/* Standings */}
-            {report.standings?.length > 0 && (
-              <div className="bg-slate-900/60 backdrop-blur-xl border border-slate-800 rounded-2xl overflow-hidden">
-                <div className="px-6 py-4 border-b border-slate-800 flex items-center gap-2">
-                  <span className="text-amber-400 text-lg">📊</span>
-                  <h2 className="font-black text-slate-200">Bảng Xếp Hạng Mùa Giải</h2>
-                  <span className="text-xs text-slate-500 ml-1">— từ SQL Server</span>
+            <div className="grid lg:grid-cols-2 gap-5">
+              {/* Standings */}
+              <div
+                className="fade-up d1 rounded-2xl overflow-hidden"
+                style={{
+                  background: "rgba(13,17,30,.9)",
+                  border: "1px solid rgba(251,146,60,.12)",
+                }}
+              >
+                <div
+                  className="px-5 py-4 flex items-center gap-2"
+                  style={{ borderBottom: "1px solid rgba(251,146,60,.08)" }}
+                >
+                  <div
+                    className="w-1 h-5 rounded-full"
+                    style={{ background: "#fb923c" }}
+                  />
+                  <span
+                    className="font-bold text-sm uppercase tracking-widest text-white"
+                    style={{ fontFamily: "'Orbitron',monospace" }}
+                  >
+                    Bảng Xếp Hạng
+                  </span>
                 </div>
-                <div className="overflow-x-auto">
-                  <table className="w-full text-sm">
-                    <thead className="bg-slate-950/80">
-                      <tr>
-                        {['Hạng', 'Đội', 'Thắng', 'Thua', 'Win Rate', 'Điểm', 'Hiệu số'].map(h => (
-                          <th key={h} className="px-5 py-3 text-left text-xs font-bold text-slate-500 uppercase">{h}</th>
-                        ))}
-                      </tr>
-                    </thead>
-                    <tbody className="divide-y divide-slate-800/50">
-                      {report.standings.map((t, i) => (
-                        <tr key={t.TeamID} className="hover:bg-slate-800/20 transition-colors">
-                          <td className="px-5 py-4">
-                            <span className={`w-7 h-7 inline-flex items-center justify-center rounded-full font-black text-sm ${i === 0 ? 'bg-amber-500/20 text-amber-400' : i === 1 ? 'bg-slate-300/20 text-slate-300' : i === 2 ? 'bg-orange-700/20 text-orange-400' : 'bg-slate-800 text-slate-500'}`}>{i + 1}</span>
-                          </td>
-                          <td className="px-5 py-4">
-                            <div className="font-bold text-slate-200">{t.TeamName}</div>
-                            <div className="text-xs text-slate-500">{t.ShortName}</div>
-                          </td>
-                          <td className="px-5 py-4 text-emerald-400 font-black">{t.Wins}</td>
-                          <td className="px-5 py-4 text-red-400 font-black">{t.Losses}</td>
-                          <td className="px-5 py-4">
-                            <span className={`text-sm font-bold ${(t.WinRate || 0) >= 60 ? 'text-emerald-400' : (t.WinRate || 0) >= 40 ? 'text-slate-400' : 'text-red-400'}`}>
-                              {t.WinRate ? `${Number(t.WinRate).toFixed(1)}%` : '0%'}
-                            </span>
-                          </td>
-                          <td className="px-5 py-4 text-amber-400 font-bold">{t.Points ?? 0}</td>
-                          <td className={`px-5 py-4 font-bold ${(t.GoalDiff || 0) >= 0 ? 'text-emerald-400' : 'text-red-400'}`}>
-                            {(t.GoalDiff || 0) >= 0 ? '+' : ''}{t.GoalDiff ?? 0}
-                          </td>
-                        </tr>
-                      ))}
-                    </tbody>
-                  </table>
-                </div>
-              </div>
-            )}
-
-            {/* Top players */}
-            {report.top_players?.length > 0 && (
-              <div className="bg-slate-900/60 backdrop-blur-xl border border-slate-800 rounded-2xl overflow-hidden">
-                <div className="px-6 py-4 border-b border-slate-800 flex items-center gap-2">
-                  <span className="text-purple-400 text-lg">🏆</span>
-                  <h2 className="font-black text-slate-200">Top Tuyển Thủ KDA Cao Nhất</h2>
-                  <span className="text-xs text-slate-500 ml-1">— từ SQL Server</span>
-                </div>
-                <div className="divide-y divide-slate-800/50">
-                  {report.top_players.map((p, i) => (
-                    <div key={i} className="px-6 py-4 flex items-center gap-4">
-                      <span className={`text-2xl ${i === 0 ? '🥇' : i === 1 ? '🥈' : '🥉'}`}></span>
-                      <div className="flex-1">
-                        <div className="font-bold text-slate-200">{p.Nickname}
-                          <span className="text-xs text-slate-600 ml-2">({p.Position})</span>
-                        </div>
-                        <div className="text-xs text-slate-500">{p.TeamShort} · {p.TotalMatches} trận</div>
+                <div className="p-3 flex flex-col gap-1.5">
+                  {(report.standings || []).map((t, i) => (
+                    <div
+                      key={t.ShortName || i}
+                      className="flex items-center gap-3 px-3 py-2.5 rounded-xl hover:bg-white/[.02] transition-colors"
+                    >
+                      <div
+                        className="w-6 font-black text-xs text-center"
+                        style={{
+                          color:
+                            i === 0
+                              ? "#fbbf24"
+                              : i === 1
+                                ? "#94a3b8"
+                                : i === 2
+                                  ? "#cd7c3b"
+                                  : "rgba(148,163,184,.4)",
+                          fontFamily: "'Orbitron',monospace",
+                        }}
+                      >
+                        {i === 0
+                          ? "🥇"
+                          : i === 1
+                            ? "🥈"
+                            : i === 2
+                              ? "🥉"
+                              : `#${t.Standing_Rank}`}
                       </div>
-                      <div className="text-right">
-                        <div className="font-black text-cyan-400 text-lg">{Number(p.AvgKDA).toFixed(2)} KDA</div>
-                        <div className={`text-xs font-bold ${(p.WinRate || 0) >= 60 ? 'text-emerald-400' : 'text-slate-400'}`}>{p.WinRate}% WR</div>
+                      <div className="flex-1">
+                        <div
+                          className="font-black text-sm text-white"
+                          style={{ fontFamily: "'Orbitron',monospace" }}
+                        >
+                          {t.ShortName}
+                        </div>
+                        <div
+                          className="text-xs"
+                          style={{ color: "rgba(148,163,184,.5)" }}
+                        >
+                          {t.Wins}W — {t.Losses}L · {t.Points}pts
+                        </div>
+                      </div>
+                      <div
+                        className="font-bold text-sm"
+                        style={{
+                          color:
+                            t.WinRate >= 60
+                              ? "#34d399"
+                              : t.WinRate >= 40
+                                ? "#94a3b8"
+                                : "#f87171",
+                        }}
+                      >
+                        {Number(t.WinRate).toFixed(1)}%
                       </div>
                     </div>
                   ))}
+                  {!report.standings?.length && (
+                    <div
+                      className="text-sm text-center py-6"
+                      style={{ color: "rgba(148,163,184,.4)" }}
+                    >
+                      Chưa có dữ liệu
+                    </div>
+                  )}
                 </div>
               </div>
-            )}
 
-            {/* Footer note */}
-            <div className="text-center text-xs text-slate-700 pb-4">
-              Báo cáo tổng hợp từ MongoDB (thống kê trận đấu) + SQL Server (bảng xếp hạng) · {currentSeason?.SeasonName}
+              {/* Top Players */}
+              <div
+                className="fade-up d2 rounded-2xl overflow-hidden"
+                style={{
+                  background: "rgba(13,17,30,.9)",
+                  border: "1px solid rgba(167,139,250,.12)",
+                }}
+              >
+                <div
+                  className="px-5 py-4 flex items-center gap-2"
+                  style={{ borderBottom: "1px solid rgba(167,139,250,.08)" }}
+                >
+                  <div
+                    className="w-1 h-5 rounded-full"
+                    style={{ background: "#a78bfa" }}
+                  />
+                  <span
+                    className="font-bold text-sm uppercase tracking-widest text-white"
+                    style={{ fontFamily: "'Orbitron',monospace" }}
+                  >
+                    Top KDA
+                  </span>
+                </div>
+                <div className="p-3 flex flex-col gap-1.5">
+                  {(report.top_players || []).map((p, i) => (
+                    <div
+                      key={p.Nickname || i}
+                      className="flex items-center gap-3 px-3 py-2.5 rounded-xl hover:bg-white/[.02] transition-colors"
+                    >
+                      <div
+                        className="w-6 font-black text-xs text-center"
+                        style={{
+                          color: i === 0 ? "#fbbf24" : "rgba(148,163,184,.4)",
+                          fontFamily: "'Orbitron',monospace",
+                        }}
+                      >
+                        {i === 0 ? "👑" : `#${p.KDA_Rank}`}
+                      </div>
+                      <div className="flex-1">
+                        <div className="font-bold text-sm text-white">
+                          {p.Nickname}
+                        </div>
+                        <div
+                          className="text-xs"
+                          style={{ color: "rgba(148,163,184,.5)" }}
+                        >
+                          {p.TeamShort} · {p.Position}
+                        </div>
+                      </div>
+                      <div
+                        className="font-black text-sm"
+                        style={{
+                          color: "#a78bfa",
+                          fontFamily: "'Orbitron',monospace",
+                        }}
+                      >
+                        {Number(p.AvgKDA).toFixed(2)}
+                      </div>
+                    </div>
+                  ))}
+                  {!report.top_players?.length && (
+                    <div
+                      className="text-sm text-center py-6"
+                      style={{ color: "rgba(148,163,184,.4)" }}
+                    >
+                      Chưa có dữ liệu
+                    </div>
+                  )}
+                </div>
+              </div>
+
+              {/* Top Heroes */}
+              <div
+                className="fade-up d3 lg:col-span-2 rounded-2xl overflow-hidden"
+                style={{
+                  background: "rgba(13,17,30,.9)",
+                  border: "1px solid rgba(52,211,153,.12)",
+                }}
+              >
+                <div
+                  className="px-5 py-4 flex items-center gap-2"
+                  style={{ borderBottom: "1px solid rgba(52,211,153,.08)" }}
+                >
+                  <div
+                    className="w-1 h-5 rounded-full"
+                    style={{ background: "#34d399" }}
+                  />
+                  <span
+                    className="font-bold text-sm uppercase tracking-widest text-white"
+                    style={{ fontFamily: "'Orbitron',monospace" }}
+                  >
+                    🍃 Top Tướng (MongoDB)
+                  </span>
+                </div>
+                <div className="p-4 grid sm:grid-cols-5 gap-3">
+                  {(report.top_heroes || []).map((h, i) => (
+                    <div
+                      key={h._id || i}
+                      className="rounded-xl p-3 text-center"
+                      style={{
+                        background: "rgba(52,211,153,.06)",
+                        border: "1px solid rgba(52,211,153,.15)",
+                      }}
+                    >
+                      <div
+                        className="font-black text-xs mb-1 truncate text-white"
+                        style={{ fontFamily: "'Orbitron',monospace" }}
+                      >
+                        {h._id || "?"}
+                      </div>
+                      <div
+                        className="text-lg font-black"
+                        style={{ color: "#34d399" }}
+                      >
+                        {h.pick_count}
+                      </div>
+                      <div
+                        className="text-xs"
+                        style={{ color: "rgba(148,163,184,.5)" }}
+                      >
+                        lần pick
+                      </div>
+                    </div>
+                  ))}
+                  {!report.top_heroes?.length && (
+                    <div
+                      className="sm:col-span-5 text-sm text-center py-6"
+                      style={{ color: "rgba(148,163,184,.4)" }}
+                    >
+                      Chưa có dữ liệu tướng trong MongoDB
+                    </div>
+                  )}
+                </div>
+              </div>
             </div>
-          </div>
+          </>
         )}
       </div>
     </div>
   );
 };
-
 export default SeasonReport;

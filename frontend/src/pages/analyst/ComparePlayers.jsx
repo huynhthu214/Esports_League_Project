@@ -1,243 +1,281 @@
-import React, { useState, useEffect } from 'react';
-import { Radar } from 'react-chartjs-2';
-import { Chart as ChartJS, RadialLinearScale, PointElement, LineElement, Filler, Tooltip, Legend } from 'chart.js';
-import axiosClient from '../../api/axiosClient';
+import { useState, useEffect } from "react";
+import axiosClient from "../../api/axiosClient";
 
-ChartJS.register(RadialLinearScale, PointElement, LineElement, Filler, Tooltip, Legend);
+const STYLE = `
+  @import url('https://fonts.googleapis.com/css2?family=Orbitron:wght@700;900&family=Rajdhani:wght@400;500;600;700&display=swap');
+  @keyframes fadeUp { from{opacity:0;transform:translateY(16px)} to{opacity:1;transform:translateY(0)} }
+  @keyframes spin { to{transform:rotate(360deg)} }
+  .fade-up { animation: fadeUp .4s ease both; }
+  .spinner { animation: spin .8s linear infinite; border-radius:50%; border:2px solid rgba(167,139,250,.2); border-top-color:#a78bfa; width:18px; height:18px; display:inline-block; }
+`;
 
-const CRITERIA_LABELS = ['Kills TB', 'Assists TB', 'Farm (GPM/100)', 'Win Rate (%)', 'Survivability (10-Deaths)'];
-
-const normalize = (stats) => {
-  if (!stats) return [0, 0, 0, 0, 0];
-  return [
-    Math.min(stats.avg_kills || 0, 15),
-    Math.min(stats.avg_assists || 0, 15),
-    Math.min((stats.avg_gold || 0) / 100, 15),
-    Math.min(stats.win_rate || 0, 100),
-    Math.max(0, 10 - (stats.avg_deaths || 0)),
-  ];
-};
-
-const StatRow = ({ label, v1, v2, better }) => (
-  <tr className="border-b border-slate-800/50 hover:bg-slate-800/20 transition-colors">
-    <td className="px-4 py-3 text-center">
-      <span className={`font-black text-sm ${better === 1 ? 'text-cyan-400' : 'text-slate-400'}`}>{v1?.toFixed(2) ?? '—'}</span>
-      {better === 1 && <span className="ml-1 text-xs text-cyan-400">▲</span>}
-    </td>
-    <td className="px-4 py-3 text-center text-xs font-bold text-slate-500 uppercase">{label}</td>
-    <td className="px-4 py-3 text-center">
-      <span className={`font-black text-sm ${better === 2 ? 'text-rose-400' : 'text-slate-400'}`}>{v2?.toFixed(2) ?? '—'}</span>
-      {better === 2 && <span className="ml-1 text-xs text-rose-400">▲</span>}
-    </td>
-  </tr>
-);
+const METRICS = [
+  { key: "avg_kills", label: "Kills TB", low: false },
+  { key: "avg_deaths", label: "Deaths TB", low: true },
+  { key: "avg_assists", label: "Assists TB", low: false },
+  { key: "win_rate", label: "Win Rate (%)", low: false },
+  { key: "survivability", label: "Survivability", low: false },
+];
 
 const ComparePlayers = () => {
   const [players, setPlayers] = useState([]);
-  const [seasons, setSeasons] = useState([]);
-  const [p1, setP1] = useState('');
-  const [p2, setP2] = useState('');
-  const [seasonId, setSeasonId] = useState('');
-  const [result, setResult] = useState(null);
+  const [p1, setP1] = useState("");
+  const [p2, setP2] = useState("");
+  const [result, setResult] = useState([]);
   const [loading, setLoading] = useState(false);
-  const [error, setError] = useState('');
+  const [error, setError] = useState("");
 
   useEffect(() => {
-    axiosClient.get('/players').then(r => setPlayers(r.data.data || [])).catch(() => {});
-    axiosClient.get('/seasons').then(r => setSeasons(r.data.data || [])).catch(() => {});
+    axiosClient
+      .get("/admin/players")
+      .then((r) => setPlayers(r.data?.data || []))
+      .catch(() => {});
   }, []);
 
-  const handleCompare = async (e) => {
-    e.preventDefault();
+  const handleCompare = () => {
     if (!p1 || !p2 || p1 === p2) {
-      setError('Vui lòng chọn 2 tuyển thủ khác nhau.');
+      setError("Chọn 2 tuyển thủ khác nhau.");
       return;
     }
     setLoading(true);
-    setError('');
-    setResult(null);
-    try {
-      const params = { p1, p2 };
-      if (seasonId) params.seasonId = seasonId;
-      const res = await axiosClient.get('/analytics/compare', { params });
-      const data = res.data || [];
-      const s1 = data.find(d => d._id === p1) || null;
-      const s2 = data.find(d => d._id === p2) || null;
-      setResult({ s1, s2 });
-    } catch {
-      setError('Lỗi khi so sánh tuyển thủ. Không có đủ dữ liệu trận đấu.');
-    } finally {
-      setLoading(false);
-    }
+    setError("");
+    setResult([]);
+    axiosClient
+      .get("/analytics/compare", { params: { p1, p2 } })
+      .then((r) => {
+        if (!r.data?.length)
+          setError("Không có dữ liệu MongoDB cho 2 tuyển thủ này.");
+        else setResult(r.data);
+      })
+      .catch(() => setError("Không tải được dữ liệu so sánh."))
+      .finally(() => setLoading(false));
   };
 
-  const p1Info = players.find(p => p.PlayerID === p1);
-  const p2Info = players.find(p => p.PlayerID === p2);
-
-  const chartData = result ? {
-    labels: CRITERIA_LABELS,
-    datasets: [
-      {
-        label: p1Info?.Nickname || p1,
-        data: normalize(result.s1),
-        backgroundColor: 'rgba(34, 211, 238, 0.25)',
-        borderColor: 'rgba(34, 211, 238, 1)',
-        borderWidth: 2,
-        pointBackgroundColor: 'rgba(34, 211, 238, 1)',
-        pointBorderColor: '#fff',
-      },
-      {
-        label: p2Info?.Nickname || p2,
-        data: normalize(result.s2),
-        backgroundColor: 'rgba(244, 63, 94, 0.25)',
-        borderColor: 'rgba(244, 63, 94, 1)',
-        borderWidth: 2,
-        pointBackgroundColor: 'rgba(244, 63, 94, 1)',
-        pointBorderColor: '#fff',
-      }
-    ]
-  } : null;
-
-  const chartOptions = {
-    maintainAspectRatio: false,
-    scales: {
-      r: {
-        min: 0,
-        max: 15,
-        angleLines: { color: 'rgba(255,255,255,0.08)' },
-        grid: { color: 'rgba(255,255,255,0.08)' },
-        pointLabels: { color: '#e2e8f0', font: { size: 12, weight: 'bold' } },
-        ticks: { display: false, backdropColor: 'transparent' }
-      }
-    },
-    plugins: {
-      legend: { position: 'bottom', labels: { color: '#f8fafc', font: { size: 13, weight: 'bold' }, padding: 20 } },
-      tooltip: { backgroundColor: 'rgba(15,23,42,0.95)', titleColor: '#38bdf8', bodyColor: '#f8fafc', borderColor: '#334155', borderWidth: 1, padding: 10 }
-    }
+  const d1 = result.find((r) => r._id === p1) || {};
+  const d2 = result.find((r) => r._id === p2) || {};
+  const p1info = players.find((p) => p.PlayerID === p1) || {};
+  const p2info = players.find((p) => p.PlayerID === p2) || {};
+  const better = (key, low) => {
+    const v1 = d1[key] || 0,
+      v2 = d2[key] || 0;
+    if (low) return v1 < v2 ? 1 : v2 < v1 ? 2 : 0;
+    return v1 > v2 ? 1 : v2 > v1 ? 2 : 0;
   };
-
-  const compareRows = result ? [
-    { label: 'Kills TB', v1: result.s1?.avg_kills, v2: result.s2?.avg_kills },
-    { label: 'Deaths TB', v1: result.s1?.avg_deaths, v2: result.s2?.avg_deaths, lowerBetter: true },
-    { label: 'Assists TB', v1: result.s1?.avg_assists, v2: result.s2?.avg_assists },
-    { label: 'Gold TB', v1: result.s1?.avg_gold, v2: result.s2?.avg_gold },
-    { label: 'Win Rate %', v1: result.s1?.win_rate, v2: result.s2?.win_rate },
-    { label: 'Số trận', v1: result.s1?.matches, v2: result.s2?.matches },
-  ] : [];
 
   return (
-    <div className="min-h-[calc(100vh-80px)] h-full flex-1 w-full bg-[#050c18] text-slate-200 p-6 font-sans relative overflow-hidden">
-      <div className="absolute top-[-10%] right-[-5%] w-[400px] h-[400px] bg-emerald-500/8 rounded-full blur-[130px] pointer-events-none"></div>
-
-      <div className="max-w-5xl mx-auto relative z-10">
-        <h1 className="text-3xl font-black italic tracking-wider text-transparent bg-clip-text bg-gradient-to-r from-emerald-400 to-cyan-500 uppercase mb-2">
-          ⚖️ So Sánh Tuyển Thủ
-        </h1>
-        <p className="text-slate-400 text-sm mb-8">Radar chart + bảng đối chiếu theo nhiều tiêu chí</p>
-
-        {/* Filter form */}
-        <div className="bg-slate-900/60 backdrop-blur-md p-6 rounded-2xl border border-slate-800 mb-6">
-          <form onSubmit={handleCompare} className="flex flex-wrap gap-4 items-end">
-            <div className="flex-1 min-w-[180px]">
-              <label className="block text-xs font-bold text-cyan-500/70 uppercase tracking-widest mb-2">Tuyển thủ 1</label>
-              <select value={p1} onChange={e => setP1(e.target.value)} required
-                className="w-full bg-slate-950/80 border border-cyan-700/40 text-cyan-300 rounded-lg px-4 py-3 text-sm focus:outline-none focus:border-cyan-500 font-bold">
-                <option value="">-- Chọn tuyển thủ 1 --</option>
-                {players.map(p => <option key={p.PlayerID} value={p.PlayerID}>{p.Nickname} ({p.Position}) — {p.PlayerID}</option>)}
-              </select>
-            </div>
-            <div className="flex items-center text-slate-600 font-black italic text-xl px-1 pb-3">VS</div>
-            <div className="flex-1 min-w-[180px]">
-              <label className="block text-xs font-bold text-rose-500/70 uppercase tracking-widest mb-2">Tuyển thủ 2</label>
-              <select value={p2} onChange={e => setP2(e.target.value)} required
-                className="w-full bg-slate-950/80 border border-rose-700/40 text-rose-300 rounded-lg px-4 py-3 text-sm focus:outline-none focus:border-rose-500 font-bold">
-                <option value="">-- Chọn tuyển thủ 2 --</option>
-                {players.map(p => <option key={p.PlayerID} value={p.PlayerID}>{p.Nickname} ({p.Position}) — {p.PlayerID}</option>)}
-              </select>
-            </div>
-            <div className="min-w-[160px]">
-              <label className="block text-xs font-bold text-slate-500 uppercase tracking-widest mb-2">Mùa giải</label>
-              <select value={seasonId} onChange={e => setSeasonId(e.target.value)}
-                className="w-full bg-slate-950/80 border border-slate-700 text-slate-300 rounded-lg px-4 py-3 text-sm focus:outline-none focus:border-slate-500">
-                <option value="">Tất cả mùa</option>
-                {seasons.map(s => <option key={s.SeasonID} value={s.SeasonID}>{s.SeasonName}</option>)}
-              </select>
-            </div>
-            <button type="submit" disabled={loading}
-              className="bg-gradient-to-r from-emerald-600 to-cyan-600 hover:from-emerald-500 hover:to-cyan-500 text-white rounded-lg px-8 py-3 text-sm font-bold uppercase tracking-wide disabled:opacity-50 transition-all shadow-[0_0_15px_rgba(16,185,129,0.3)]">
-              {loading ? '⏳ Đang xử lý...' : 'So Sánh'}
-            </button>
-          </form>
-
-          {/* Criteria hint */}
-          <div className="mt-4 pt-4 border-t border-slate-800">
-            <p className="text-xs text-slate-600 font-bold uppercase tracking-widest mb-2">📋 Tiêu chí so sánh:</p>
-            <div className="flex flex-wrap gap-2">
-              {['Kills TB', 'Deaths TB', 'Assists TB', 'Gold/GPM TB', 'Win Rate %', 'Survivability', 'Số trận'].map(c => (
-                <span key={c} className="text-xs px-2.5 py-1 bg-slate-800 border border-slate-700 rounded-full text-slate-400">{c}</span>
-              ))}
-            </div>
+    <div
+      className="min-h-screen relative overflow-x-hidden text-slate-200"
+      style={{
+        background: "#080c16",
+        fontFamily: "'Rajdhani','Segoe UI',sans-serif",
+      }}
+    >
+      <style>{STYLE}</style>
+      <div className="absolute inset-0 pointer-events-none">
+        <div
+          className="absolute inset-0 opacity-[0.03]"
+          style={{
+            backgroundImage:
+              "linear-gradient(rgba(167,139,250,.8) 1px,transparent 1px),linear-gradient(90deg,rgba(167,139,250,.8) 1px,transparent 1px)",
+            backgroundSize: "40px 40px",
+          }}
+        />
+        <div
+          className="absolute top-0 left-1/2 -translate-x-1/2 w-[500px] h-80 rounded-full"
+          style={{
+            background:
+              "radial-gradient(ellipse,rgba(167,139,250,.1) 0%,transparent 70%)",
+          }}
+        />
+      </div>
+      <div className="relative z-10 max-w-4xl mx-auto px-4 sm:px-6 py-8">
+        <div className="fade-up mb-6">
+          <div className="flex items-center gap-2 mb-1">
+            <div className="w-2 h-2 rounded-full bg-purple-400 animate-pulse" />
+            <span
+              className="text-xs font-bold uppercase tracking-[0.25em]"
+              style={{ color: "rgba(167,139,250,.7)" }}
+            >
+              MongoDB
+            </span>
           </div>
+          <h1
+            className="text-3xl font-black uppercase text-white"
+            style={{ fontFamily: "'Orbitron',monospace" }}
+          >
+            ⚖️ So Sánh Tuyển Thủ
+          </h1>
+          <p className="text-sm mt-1" style={{ color: "rgba(148,163,184,.6)" }}>
+            So sánh hiệu suất 2 tuyển thủ từ match_stats.
+          </p>
         </div>
-
+        <div
+          className="fade-up rounded-2xl p-5 mb-6"
+          style={{
+            background: "rgba(13,17,30,.9)",
+            border: "1px solid rgba(167,139,250,.15)",
+          }}
+        >
+          <div className="grid sm:grid-cols-2 gap-3 mb-3">
+            {[
+              [p1, setP1, "#38bdf8", "Tuyển thủ 1"],
+              [p2, setP2, "#f87171", "Tuyển thủ 2"],
+            ].map(([val, set, color, label]) => (
+              <div key={label}>
+                <div
+                  className="text-xs font-bold uppercase tracking-widest mb-1.5"
+                  style={{ color }}
+                >
+                  {label}
+                </div>
+                <select
+                  value={val}
+                  onChange={(e) => set(e.target.value)}
+                  className="w-full text-sm font-semibold rounded-xl px-4 py-2.5 outline-none"
+                  style={{
+                    background: "rgba(0,0,0,.4)",
+                    border: `1px solid ${color}30`,
+                    color,
+                    fontFamily: "'Orbitron',monospace",
+                    fontSize: "0.72rem",
+                  }}
+                >
+                  <option value="">-- Chọn --</option>
+                  {players.map((p) => (
+                    <option key={p.PlayerID} value={p.PlayerID}>
+                      {p.Nickname} · {p.Position}
+                    </option>
+                  ))}
+                </select>
+              </div>
+            ))}
+          </div>
+          <button
+            onClick={handleCompare}
+            disabled={loading || !p1 || !p2}
+            className="w-full py-2.5 rounded-xl text-sm font-black uppercase tracking-widest text-white disabled:opacity-40 transition-all hover:scale-[1.01]"
+            style={{
+              background: "linear-gradient(135deg,#7c3aed,#a78bfa)",
+              boxShadow: "0 0 18px rgba(167,139,250,.3)",
+              fontFamily: "'Orbitron',monospace",
+              fontSize: "0.7rem",
+            }}
+          >
+            {loading ? <span className="spinner" /> : "So Sánh"}
+          </button>
+        </div>
         {error && (
-          <div className="mb-6 p-4 bg-red-900/20 border border-red-500/30 rounded-xl text-red-400 text-sm">{error}</div>
+          <div
+            className="fade-up mb-5 px-5 py-3 rounded-xl text-sm"
+            style={{
+              background: "rgba(248,113,113,.08)",
+              border: "1px solid rgba(248,113,113,.25)",
+              color: "#f87171",
+            }}
+          >
+            ⚠️ {error}
+          </div>
         )}
-
-        {/* Results */}
-        {result && (
-          <div className="grid lg:grid-cols-2 gap-6">
-            {/* Radar Chart */}
-            <div className="bg-slate-900/60 backdrop-blur-xl p-6 rounded-2xl border border-slate-800">
-              <h2 className="text-sm font-bold text-slate-400 uppercase tracking-widest mb-4">Radar Chart</h2>
-              <div style={{ height: '380px' }} className="flex justify-center">
-                <Radar data={chartData} options={chartOptions} />
+        {result.length === 2 && (
+          <div
+            className="fade-up rounded-2xl overflow-hidden"
+            style={{
+              background: "rgba(13,17,30,.9)",
+              border: "1px solid rgba(167,139,250,.1)",
+            }}
+          >
+            <div
+              className="grid grid-cols-3 text-center py-4 px-5"
+              style={{ borderBottom: "1px solid rgba(167,139,250,.1)" }}
+            >
+              <div
+                className="font-black text-sm"
+                style={{ color: "#38bdf8", fontFamily: "'Orbitron',monospace" }}
+              >
+                {p1info.Nickname || p1}
+              </div>
+              <div
+                className="text-xs font-bold uppercase tracking-widest self-center"
+                style={{ color: "rgba(148,163,184,.4)" }}
+              >
+                VS
+              </div>
+              <div
+                className="font-black text-sm"
+                style={{ color: "#f87171", fontFamily: "'Orbitron',monospace" }}
+              >
+                {p2info.Nickname || p2}
               </div>
             </div>
-
-            {/* Comparison table */}
-            <div className="bg-slate-900/60 backdrop-blur-xl p-6 rounded-2xl border border-slate-800">
-              <h2 className="text-sm font-bold text-slate-400 uppercase tracking-widest mb-4">Bảng Đối Chiếu</h2>
-              <div className="overflow-x-auto rounded-xl border border-slate-800">
-                <table className="w-full text-sm">
-                  <thead className="bg-slate-950/80">
-                    <tr>
-                      <th className="px-4 py-3 text-center text-xs font-black text-cyan-400 uppercase">{p1Info?.Nickname || p1}</th>
-                      <th className="px-4 py-3 text-center text-xs font-bold text-slate-500 uppercase">Tiêu chí</th>
-                      <th className="px-4 py-3 text-center text-xs font-black text-rose-400 uppercase">{p2Info?.Nickname || p2}</th>
-                    </tr>
-                  </thead>
-                  <tbody>
-                    {compareRows.map(row => {
-                      const { v1, v2, lowerBetter } = row;
-                      const better = v1 == null || v2 == null ? 0 :
-                        lowerBetter ? (v1 < v2 ? 1 : v1 > v2 ? 2 : 0) :
-                          (v1 > v2 ? 1 : v1 < v2 ? 2 : 0);
-                      return <StatRow key={row.label} label={row.label} v1={v1} v2={v2} better={better} />;
-                    })}
-                  </tbody>
-                </table>
-              </div>
-
-              {/* Winner badge */}
-              {result.s1 && result.s2 && (() => {
-                let score1 = 0, score2 = 0;
-                compareRows.forEach(r => {
-                  if (r.v1 == null || r.v2 == null) return;
-                  const better = r.lowerBetter ? (r.v1 < r.v2 ? 1 : 2) : (r.v1 > r.v2 ? 1 : 2);
-                  if (better === 1) score1++; else score2++;
-                });
-                const winner = score1 > score2 ? p1Info?.Nickname || p1 : score2 > score1 ? p2Info?.Nickname || p2 : null;
-                return winner ? (
-                  <div className="mt-5 p-4 bg-emerald-900/20 border border-emerald-500/30 rounded-xl text-center">
-                    <div className="text-2xl mb-1">🏆</div>
-                    <div className="font-black text-emerald-400">{winner}</div>
-                    <div className="text-xs text-slate-500 mt-1">Vượt trội hơn qua nhiều tiêu chí ({score1 > score2 ? `${score1}/${compareRows.length}` : `${score2}/${compareRows.length}`})</div>
+            <div>
+              {METRICS.map((m) => {
+                const v1 = d1[m.key] || 0,
+                  v2 = d2[m.key] || 0,
+                  b = better(m.key, m.low),
+                  max = Math.max(v1, v2, 1);
+                return (
+                  <div
+                    key={m.key}
+                    className="grid grid-cols-3 items-center px-5 py-4 gap-4"
+                    style={{ borderBottom: "1px solid rgba(167,139,250,.05)" }}
+                  >
+                    <div className="flex items-center justify-end gap-2">
+                      <span
+                        className="font-black text-sm"
+                        style={{
+                          color: b === 1 ? "#34d399" : "rgba(148,163,184,.6)",
+                          fontFamily: "'Orbitron',monospace",
+                        }}
+                      >
+                        {v1.toFixed(1)}
+                        {b === 1 ? " ✓" : ""}
+                      </span>
+                      <div
+                        className="w-20 h-2 rounded-full"
+                        style={{ background: "rgba(255,255,255,.05)" }}
+                      >
+                        <div
+                          className="h-full rounded-full ml-auto"
+                          style={{
+                            width: `${(v1 / max) * 100}%`,
+                            background: b === 1 ? "#34d399" : "#38bdf8",
+                          }}
+                        />
+                      </div>
+                    </div>
+                    <div
+                      className="text-center text-xs font-bold uppercase tracking-widest"
+                      style={{ color: "rgba(148,163,184,.5)" }}
+                    >
+                      {m.label}
+                    </div>
+                    <div className="flex items-center gap-2">
+                      <div
+                        className="w-20 h-2 rounded-full"
+                        style={{ background: "rgba(255,255,255,.05)" }}
+                      >
+                        <div
+                          className="h-full rounded-full"
+                          style={{
+                            width: `${(v2 / max) * 100}%`,
+                            background: b === 2 ? "#34d399" : "#f87171",
+                          }}
+                        />
+                      </div>
+                      <span
+                        className="font-black text-sm"
+                        style={{
+                          color: b === 2 ? "#34d399" : "rgba(148,163,184,.6)",
+                          fontFamily: "'Orbitron',monospace",
+                        }}
+                      >
+                        {b === 2 ? "✓ " : ""}
+                        {v2.toFixed(1)}
+                      </span>
+                    </div>
                   </div>
-                ) : (
-                  <div className="mt-5 p-4 bg-slate-800/50 rounded-xl text-center text-slate-400 text-sm">⚖️ Hai tuyển thủ tương đương nhau</div>
                 );
-              })()}
+              })}
             </div>
           </div>
         )}
@@ -245,5 +283,4 @@ const ComparePlayers = () => {
     </div>
   );
 };
-
 export default ComparePlayers;

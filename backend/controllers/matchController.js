@@ -1,290 +1,225 @@
-const { sql, getPool, getMongoDb } = require('../config/db');
+// backend/controllers/matchController.js
+// ✅ FIX: Bỏ cột m.Stage (không tồn tại trong bảng Matches)
+// Thay bằng m.Format để hiển thị định dạng (BO3/BO5)
 
-// POST /api/matches
-// Nhận dữ liệu từ MatchResultForm mới, đồng bộ vào MongoDB + SQL (Dual-Write)
+const { sql, getPool, getMongoDb } = require("../config/db");
+const { ObjectId } = require("mongodb");
+
+// ================================================================
+// NHẬP KẾT QUẢ TRẬN ĐẤU — Dual-write SQL + MongoDB
+// POST /api/admin/matches
+// ================================================================
 exports.submitMatchResult = async (req, res) => {
-    const matchData = req.body;
+  const matchData = req.body;
+  const mongoDb = getMongoDb();
+  const transaction = new sql.Transaction(getPool());
+  let mongoInsertedId = null;
 
-    // Validate cơ bản
-    if (!matchData.match_id || !matchData.season_id || !Array.isArray(matchData.teams) || matchData.teams.length < 2) {
-        return res.status(400).json({ error: 'Dữ liệu trận đấu không hợp lệ. Cần có match_id, season_id và 2 đội.' });
-    }
-
-    const mongoDb = getMongoDb();
-    const pool = getPool();
-    const transaction = pool.transaction();
-    let mongoInsertedId = null;
-
-    try {
-        const winningTeam = matchData.teams.find(t => t.result === 'WIN')?.team_id;
-        const losingTeam = matchData.teams.find(t => t.result === 'LOSS')?.team_id;
-
-        if (!winningTeam || !losingTeam) {
-            throw new Error('Dữ liệu JSON không hợp lệ: Thiếu team WIN/LOSS.');
-        }
-
-        // ==========================================
-        // BƯỚC 1: LƯU VÀO MONGODB (NoSQL) TRƯỚC
-        // ==========================================
-        const mongoDoc = {
-            match_id: matchData.match_id,
-            season_id: matchData.season_id,
-            match_date: matchData.match_date ? new Date(matchData.match_date) : new Date(),
-            venue: matchData.venue || null,
-            format: matchData.format || 'BO3',
-            teams: matchData.teams,
-            created_at: new Date()
-        };
-
-        const insertResult = await mongoDb.collection('match_stats').insertOne(mongoDoc);
-        mongoInsertedId = insertResult.insertedId;
-
-        // ==========================================
-        // BƯỚC 2: CẬP NHẬT MS SQL BẰNG TRANSACTION
-        // ==========================================
-        await transaction.begin();
-        const request = new sql.Request(transaction);
-
-        request.input('MatchID', sql.VarChar(20), matchData.match_id);
-        request.input('SeasonID', sql.VarChar(10), matchData.season_id);
-        request.input('Team1ID', sql.VarChar(10), matchData.team1_id || matchData.teams[0]?.team_id);
-        request.input('Team2ID', sql.VarChar(10), matchData.team2_id || matchData.teams[1]?.team_id);
-        request.input('WinnerTeamID', sql.VarChar(10), winningTeam);
-        request.input('Team1Score', sql.Int, parseInt(matchData.team1_score) || 0);
-        request.input('Team2Score', sql.Int, parseInt(matchData.team2_score) || 0);
-        request.input('MatchDate', sql.DateTime, matchData.match_date ? new Date(matchData.match_date) : new Date());
-        request.input('Venue', sql.NVarChar(100), matchData.venue || null);
-        request.input('Format', sql.VarChar(10), matchData.format || 'BO3');
-        request.input('MongoRef', sql.VarChar(50), mongoInsertedId.toString());
-        request.input('WinTeam', sql.VarChar(10), winningTeam);
-        request.input('LoseTeam', sql.VarChar(10), losingTeam);
-
-        // Upsert vào bảng Matches (nếu match_id đã tồn tại thì skip)
-        await request.query(`
-            IF NOT EXISTS (SELECT 1 FROM Matches WHERE MatchID = @MatchID)
-            BEGIN
-                INSERT INTO Matches (MatchID, SeasonID, Team1ID, Team2ID, WinnerTeamID, Team1Score, Team2Score, MatchDate, Venue, Format, MongoMatchRef)
-                VALUES (@MatchID, @SeasonID, @Team1ID, @Team2ID, @WinnerTeamID, @Team1Score, @Team2Score, @MatchDate, @Venue, @Format, @MongoRef)
-            END
-        `);
-
-        // Upsert TeamStandings — đội thắng
-        await request.query(`
-            IF EXISTS (SELECT 1 FROM TeamStandings WHERE TeamID = @WinTeam AND SeasonID = @SeasonID)
-                UPDATE TeamStandings
-                SET Wins = Wins + 1,
-                    WinRate = CAST((Wins + 1) AS FLOAT) / NULLIF((Wins + 1 + Losses), 0) * 100,
-                    LastUpdated = GETDATE()
-                WHERE TeamID = @WinTeam AND SeasonID = @SeasonID
-            ELSE
-                INSERT INTO TeamStandings (SeasonID, TeamID, Wins, Losses, WinRate)
-                VALUES (@SeasonID, @WinTeam, 1, 0, 100.00)
-        `);
-
-        // Upsert TeamStandings — đội thua
-        await request.query(`
-            IF EXISTS (SELECT 1 FROM TeamStandings WHERE TeamID = @LoseTeam AND SeasonID = @SeasonID)
-                UPDATE TeamStandings
-                SET Losses = Losses + 1,
-                    WinRate = CAST(Wins AS FLOAT) / NULLIF((Wins + Losses + 1), 0) * 100,
-                    LastUpdated = GETDATE()
-                WHERE TeamID = @LoseTeam AND SeasonID = @SeasonID
-            ELSE
-                INSERT INTO TeamStandings (SeasonID, TeamID, Wins, Losses, WinRate)
-                VALUES (@SeasonID, @LoseTeam, 0, 1, 0.00)
-        `);
-
-        // NẾU TẤT CẢ THÀNH CÔNG → CHỐT GIAO DỊCH SQL
-        await transaction.commit();
-
-        res.status(200).json({
-            message: `✅ Đồng bộ thành công! Trận ${matchData.match_id}: ${winningTeam} thắng ${losingTeam}`,
-            match_id: matchData.match_id,
-            mongo_id: mongoInsertedId.toString()
-        });
-
-    } catch (error) {
-        console.error('❌ Lỗi Dual-write:', error);
-
-        // Hoàn tác SQL nếu đang chạy dở
-        try {
-            if (transaction._activeRequest) {
-                await transaction.rollback();
-                console.log('🔄 Đã Rollback MS SQL.');
-            }
-        } catch (_) {}
-
-        // Xóa document MongoDB vừa tạo để đồng bộ (Compensating Transaction)
-        if (mongoInsertedId) {
-            try {
-                await mongoDb.collection('match_stats').deleteOne({ _id: mongoInsertedId });
-                console.log('🗑️ Đã xóa log bên MongoDB do SQL thất bại.');
-            } catch (_) {}
-        }
-
-        res.status(500).json({ error: error.message || 'Lỗi hệ thống, đã rollback toàn bộ giao dịch.' });
-    }
-};
-
-// GET /api/matches?seasonId=SS2025&teamId=SGD
-// Lấy lịch sử trận đấu (đã có kết quả)
-exports.getMatchHistory = async (req, res) => {
-    try {
-        const { seasonId, teamId } = req.query;
-        const pool = getPool();
-        const request = pool.request();
-
-        let where = 'WHERE m.WinnerTeamID IS NOT NULL';
-        if (seasonId) {
-            request.input('SeasonID', sql.VarChar(10), seasonId);
-            where += ' AND m.SeasonID = @SeasonID';
-        }
-        if (teamId) {
-            request.input('TeamID', sql.VarChar(10), teamId);
-            where += ' AND (m.Team1ID = @TeamID OR m.Team2ID = @TeamID)';
-        }
-
-        const result = await request.query(`
-            SELECT
-                m.MatchID, m.SeasonID, s.SeasonName,
-                m.Team1ID, t1.TeamName AS Team1Name, t1.ShortName AS Team1Short,
-                m.Team2ID, t2.TeamName AS Team2Name, t2.ShortName AS Team2Short,
-                m.WinnerTeamID, tw.TeamName AS WinnerName,
-                m.Team1Score, m.Team2Score,
-                m.MatchDate, m.Venue, m.Format, m.DurationMinutes,
-                m.MongoMatchRef
-            FROM Matches m
-            JOIN Seasons s ON s.SeasonID = m.SeasonID
-            JOIN Teams t1 ON t1.TeamID = m.Team1ID
-            JOIN Teams t2 ON t2.TeamID = m.Team2ID
-            LEFT JOIN Teams tw ON tw.TeamID = m.WinnerTeamID
-            ${where}
-            ORDER BY m.MatchDate DESC
-        `);
-
-        res.json({ data: result.recordset });
-    } catch (error) {
-        res.status(500).json({ error: error.message });
-    }
-};
-
-// GET /api/matches/schedule?seasonId=SS2025
-// Lịch thi đấu (bao gồm cả chưa có kết quả)
-exports.getMatchSchedule = async (req, res) => {
-    try {
-        const { seasonId } = req.query;
-        const pool = getPool();
-        const request = pool.request();
-
-        let where = 'WHERE 1=1';
-        if (seasonId) {
-            request.input('SeasonID', sql.VarChar(10), seasonId);
-            where += ' AND m.SeasonID = @SeasonID';
-        }
-
-        const result = await request.query(`
-            SELECT
-                m.MatchID, m.SeasonID, s.SeasonName,
-                m.Team1ID, t1.TeamName AS Team1Name, t1.ShortName AS Team1Short,
-                m.Team2ID, t2.TeamName AS Team2Name, t2.ShortName AS Team2Short,
-                m.WinnerTeamID,
-                m.Team1Score, m.Team2Score,
-                m.MatchDate, m.Venue, m.Format,
-                CASE WHEN m.WinnerTeamID IS NULL THEN 'UPCOMING' ELSE 'COMPLETED' END AS MatchStatus
-            FROM Matches m
-            JOIN Seasons s ON s.SeasonID = m.SeasonID
-            JOIN Teams t1 ON t1.TeamID = m.Team1ID
-            JOIN Teams t2 ON t2.TeamID = m.Team2ID
-            ${where}
-            ORDER BY m.MatchDate ASC
-        `);
-
-        res.json({ data: result.recordset });
-    } catch (error) {
-        res.status(500).json({ error: error.message });
-    }
-};
-
-// GET /api/matches/:matchId/detail
-// Chi tiết trận đấu từ MongoDB
-exports.getMatchDetail = async (req, res) => {
-    try {
-        const { matchId } = req.params;
-        const mongoDb = getMongoDb();
-
-        const match = await mongoDb.collection('match_stats').findOne({ match_id: matchId });
-        if (!match) {
-            return res.status(404).json({ message: 'Không tìm thấy dữ liệu chi tiết trận đấu.' });
-        }
-
-        res.json({ data: match });
-    } catch (error) {
-        res.status(500).json({ error: error.message });
-    }
-};
-
-// =============================================================
-// THÊM VÀO matchController.js — các route còn thiếu
-// Paste các hàm này vào cuối file matchController.js gốc
-// =============================================================
-
-const { getPlayerForm } = require("../../databases/nosql_database/aggregation_player_form");
-
-// ─────────────────────────────────────────────────────────────
-// GET /api/matches/player/:playerId/form
-// Lấy chỉ số form tuyển thủ (50 trận gần nhất) cho analyst dashboard
-// Trả về: avg_kda, avg_gpm, win_rate, kda_distribution (bucket)
-// ─────────────────────────────────────────────────────────────
-exports.getPlayerFormStats = async (req, res) => {
   try {
-    const { playerId } = req.params;
+    const insertResult = await mongoDb.collection("match_stats").insertOne({
+      ...matchData,
+      createdAt: new Date(),
+    });
+    mongoInsertedId = insertResult.insertedId;
 
-    if (!playerId) {
-      return res.status(400).json({ error: "Thiếu playerId." });
+    const winningTeam = matchData.teams?.find(
+      (t) => t.result === "WIN",
+    )?.team_id;
+    const losingTeam = matchData.teams?.find(
+      (t) => t.result === "LOSS",
+    )?.team_id;
+
+    if (!winningTeam || !losingTeam || !matchData.season_id) {
+      throw new Error(
+        "Dữ liệu không hợp lệ: Thiếu team WIN/LOSS hoặc season_id.",
+      );
     }
 
-    const result = await getPlayerForm(playerId);
+    await transaction.begin();
+    const request = new sql.Request(transaction);
+    request.input("WinTeam", sql.VarChar(10), winningTeam);
+    request.input("LoseTeam", sql.VarChar(10), losingTeam);
+    request.input("SeasonId", sql.VarChar(10), matchData.season_id);
 
-    if (!result.form) {
-      return res.status(404).json({
-        message: `Không tìm thấy dữ liệu cho player ${playerId}.`,
-      });
-    }
+    await request.query(`
+      UPDATE TeamStandings SET Wins = Wins + 1
+      WHERE TeamID = @WinTeam AND SeasonID = @SeasonId
+    `);
+    await request.query(`
+      UPDATE TeamStandings SET Losses = Losses + 1
+      WHERE TeamID = @LoseTeam AND SeasonID = @SeasonId
+    `);
 
-    res.json({ data: result });
+    await transaction.commit();
+    res.status(200).json({ message: "Dual-write thành công!" });
   } catch (error) {
-    console.error("❌ Lỗi getPlayerFormStats:", error);
-    res.status(500).json({ error: error.message });
+    console.error("❌ Lỗi Dual-write:", error);
+    try {
+      await transaction.rollback();
+    } catch {}
+    if (mongoInsertedId) {
+      await mongoDb
+        .collection("match_stats")
+        .deleteOne({ _id: mongoInsertedId });
+    }
+    res.status(500).json({ error: error.message || "Lỗi hệ thống." });
   }
 };
 
-// ─────────────────────────────────────────────────────────────
-// GET /api/matches/player/:playerId/form/compare?rivals=P002,P003
-// So sánh form của nhiều tuyển thủ cùng lúc (cho ComparePlayers.jsx)
-// ─────────────────────────────────────────────────────────────
-exports.comparePlayerForms = async (req, res) => {
+// ================================================================
+// LỊCH THI ĐẤU — các trận sắp diễn ra (chưa có WinnerTeamID)
+// GET /api/admin/matches/schedule?seasonId=SS2025
+// ✅ FIX: Bỏ m.Stage → dùng m.Format
+// ================================================================
+exports.getMatchSchedule = async (req, res) => {
+  const { seasonId } = req.query;
+  if (!seasonId) return res.status(400).json({ message: "Thiếu seasonId." });
+
   try {
-    const { playerId } = req.params;
-    const rivals = req.query.rivals
-      ? req.query.rivals.split(",").map((id) => id.trim())
-      : [];
+    const result = await getPool()
+      .request()
+      .input("sid", sql.VarChar(10), seasonId).query(`
+        SELECT
+            m.MatchID,
+            m.MatchDate,
+            m.Format,
+            m.Venue,
+            t1.TeamName  AS Team1Name,
+            t1.ShortName AS Team1Short,
+            t2.TeamName  AS Team2Name,
+            t2.ShortName AS Team2Short,
+            s.SeasonName
+        FROM Matches m
+        JOIN Teams   t1 ON t1.TeamID  = m.Team1ID
+        JOIN Teams   t2 ON t2.TeamID  = m.Team2ID
+        JOIN Seasons s  ON s.SeasonID = m.SeasonID
+        WHERE m.SeasonID      = @sid
+          AND m.WinnerTeamID IS NULL
+        ORDER BY m.MatchDate ASC
+      `);
+    res.json({ data: result.recordset, seasonId });
+  } catch (err) {
+    console.error("getMatchSchedule:", err.message);
+    res.status(500).json({ message: "Lỗi khi lấy lịch thi đấu." });
+  }
+};
 
-    const allPlayerIds = [playerId, ...rivals].filter(Boolean);
+// ================================================================
+// LỊCH SỬ TRẬN ĐẤU — các trận đã có kết quả
+// GET /api/admin/matches/history?seasonId=SS2025&limit=20
+// ✅ FIX: Bỏ m.Stage → dùng m.Format, thêm m.Venue
+// ================================================================
+exports.getMatchHistory = async (req, res) => {
+  const { seasonId, limit = 20 } = req.query;
+  if (!seasonId) return res.status(400).json({ message: "Thiếu seasonId." });
 
-    if (allPlayerIds.length === 0) {
-      return res.status(400).json({ error: "Cần ít nhất 1 playerId." });
+  const safeLimit = Math.min(parseInt(limit) || 20, 100);
+
+  try {
+    const result = await getPool()
+      .request()
+      .input("sid", sql.VarChar(10), seasonId).query(`
+        SELECT TOP (${safeLimit})
+            m.MatchID,
+            m.MatchDate,
+            m.Format,
+            m.Venue,
+            m.Team1Score,
+            m.Team2Score,
+            m.DurationMinutes,
+            t1.TeamName  AS Team1Name,
+            t1.ShortName AS Team1Short,
+            t2.TeamName  AS Team2Name,
+            t2.ShortName AS Team2Short,
+            tw.TeamName  AS WinnerName,
+            tw.ShortName AS WinnerShort,
+            p.Nickname   AS MVPNickname,
+            s.SeasonName
+        FROM Matches m
+        JOIN Teams   t1 ON t1.TeamID  = m.Team1ID
+        JOIN Teams   t2 ON t2.TeamID  = m.Team2ID
+        JOIN Seasons s  ON s.SeasonID = m.SeasonID
+        LEFT JOIN Teams   tw ON tw.TeamID   = m.WinnerTeamID
+        LEFT JOIN Players p  ON p.PlayerID  = m.MVPPlayerID
+        WHERE m.SeasonID       = @sid
+          AND m.WinnerTeamID IS NOT NULL
+        ORDER BY m.MatchDate DESC
+      `);
+    res.json({ data: result.recordset, seasonId });
+  } catch (err) {
+    console.error("getMatchHistory:", err.message);
+    res.status(500).json({ message: "Lỗi khi lấy lịch sử trận đấu." });
+  }
+};
+
+// ================================================================
+// CHI TIẾT TRẬN ĐẤU — lấy thêm stats từ MongoDB
+// GET /api/admin/matches/:matchId/detail
+// ✅ FIX: Bỏ m.Stage → dùng m.Format, m.Venue
+// ================================================================
+exports.getMatchDetail = async (req, res) => {
+  const { matchId } = req.params;
+  try {
+    const sqlResult = await getPool()
+      .request()
+      .input("mid", sql.VarChar(20), matchId).query(`
+        SELECT
+            m.MatchID,
+            m.MatchDate,
+            m.Format,
+            m.Venue,
+            m.Team1Score,
+            m.Team2Score,
+            m.DurationMinutes,
+            m.MongoMatchRef,
+            t1.TeamName  AS Team1Name,
+            t1.ShortName AS Team1Short,
+            t2.TeamName  AS Team2Name,
+            t2.ShortName AS Team2Short,
+            tw.ShortName AS WinnerShort,
+            p.Nickname   AS MVPNickname
+        FROM Matches m
+        JOIN Teams   t1 ON t1.TeamID  = m.Team1ID
+        JOIN Teams   t2 ON t2.TeamID  = m.Team2ID
+        LEFT JOIN Teams   tw ON tw.TeamID  = m.WinnerTeamID
+        LEFT JOIN Players p  ON p.PlayerID = m.MVPPlayerID
+        WHERE m.MatchID = @mid
+      `);
+
+    if (!sqlResult.recordset.length) {
+      return res.status(404).json({ message: "Không tìm thấy trận đấu." });
     }
 
-    // Chạy song song các pipeline
-    const results = await Promise.all(
-      allPlayerIds.map((pid) => getPlayerForm(pid))
-    );
+    const match = sqlResult.recordset[0];
 
-    res.json({
-      data: results.filter((r) => r.form !== null),
-    });
-  } catch (error) {
-    console.error("❌ Lỗi comparePlayerForms:", error);
-    res.status(500).json({ error: error.message });
+    let mongoStats = null;
+    if (match.MongoMatchRef) {
+      try {
+        const mongoDb = getMongoDb();
+        mongoStats = await mongoDb.collection("match_stats").findOne({
+          $or: [
+            { match_id: matchId },
+            { _id: new ObjectId(match.MongoMatchRef) },
+          ],
+        });
+      } catch {
+        /* MongoDB optional */
+      }
+    } else {
+      // Thử lấy MongoDB theo match_id dù không có MongoMatchRef
+      try {
+        const mongoDb = getMongoDb();
+        mongoStats = await mongoDb
+          .collection("match_stats")
+          .findOne({ match_id: matchId });
+      } catch {
+        /* optional */
+      }
+    }
+
+    res.json({ data: { ...match, mongoStats } });
+  } catch (err) {
+    console.error("getMatchDetail:", err.message);
+    res.status(500).json({ message: "Lỗi khi lấy chi tiết trận đấu." });
   }
 };

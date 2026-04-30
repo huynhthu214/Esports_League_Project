@@ -5,7 +5,7 @@ require("dotenv").config();
 console.log("=== DEBUG ENV ===");
 console.log("MONGODB_URI:", process.env.MONGODB_URI ? "✅ Có" : "❌ Không");
 console.log("JWT_SECRET:", process.env.JWT_SECRET ? "✅ Có" : "❌ Không");
-console.log("=================")
+console.log("=================");
 
 const express = require("express");
 const cors = require("cors");
@@ -19,7 +19,7 @@ const PORT = process.env.PORT || 5000;
 // ========================
 app.use(cors({ origin: "http://localhost:5173" })); // Vite default port
 app.use(express.json());
-app.use(express.urlencoded({ extended: true })); 
+app.use(express.urlencoded({ extended: true }));
 
 app.get("/", (req, res) => {
   res.send(`
@@ -55,7 +55,7 @@ app.get("/", (req, res) => {
 // ROUTES
 // ========================
 app.use("/api/auth", require("./routes/authRoutes"));
-app.use("/api", require("./routes/adminRoutes"));
+app.use("/api/admin", require("./routes/adminRoutes"));
 app.use("/api/analytics", require("./routes/analyticsRoutes"));
 
 // Health check
@@ -70,8 +70,8 @@ const start = async () => {
   await connectSQL();
   await connectMongo();
   app.listen(PORT, () => {
-      console.log(`Server chạy tại http://localhost:${PORT}`);
-    });
+    console.log(`Server chạy tại http://localhost:${PORT}`);
+  });
 };
 
 start();

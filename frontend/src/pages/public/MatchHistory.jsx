@@ -1,148 +1,335 @@
-import { useState, useEffect } from 'react';
-import { useNavigate } from 'react-router-dom';
-import axiosClient from '../../api/axiosClient';
+import { useState, useEffect } from "react";
+import axiosClient from "../../api/axiosClient";
+
+const STYLE = `
+  @import url('https://fonts.googleapis.com/css2?family=Orbitron:wght@700;900&family=Rajdhani:wght@400;500;600;700&display=swap');
+  @keyframes fadeUp { from{opacity:0;transform:translateY(16px)} to{opacity:1;transform:translateY(0)} }
+  @keyframes spin { to{transform:rotate(360deg)} }
+  .fade-up { animation: fadeUp .4s ease both; }
+  .d1{animation-delay:.05s} .d2{animation-delay:.1s}
+  .spinner { animation: spin .8s linear infinite; border-radius:50%; border:2px solid rgba(167,139,250,.2); border-top-color:#a78bfa; width:16px; height:16px; display:inline-block; }
+`;
+
+const fmtDate = (d) =>
+  !d
+    ? "—"
+    : new Date(d).toLocaleDateString("vi-VN", {
+        day: "2-digit",
+        month: "2-digit",
+        year: "numeric",
+      });
 
 const MatchHistory = () => {
   const [seasons, setSeasons] = useState([]);
-  const [teams, setTeams] = useState([]);
-  const [seasonId, setSeasonId] = useState('');
-  const [teamId, setTeamId] = useState('');
+  const [seasonId, setSeasonId] = useState("");
   const [matches, setMatches] = useState([]);
   const [loading, setLoading] = useState(false);
-  const navigate = useNavigate();
+  const [error, setError] = useState("");
 
-  useEffect(() => {
-    axiosClient.get('/seasons').then(r => {
-      const data = r.data.data || [];
-      setSeasons(data);
-      if (data.length > 0) setSeasonId(data[0].SeasonID);
-    }).catch(() => {});
-    axiosClient.get('/teams').then(r => setTeams(r.data.data || [])).catch(() => {});
-  }, []);
-
-  useEffect(() => {
-    if (!seasonId) return;
+  const fetchMatches = (sid) => {
     setLoading(true);
-    const params = { seasonId };
-    if (teamId) params.teamId = teamId;
-    axiosClient.get('/matches/history', { params })
-      .then(r => setMatches(r.data.data || []))
-      .catch(() => setMatches([]))
+    setError("");
+    axiosClient
+      .get("/admin/matches/history", { params: { seasonId: sid } })
+      .then((r) => setMatches(r.data?.data || []))
+      .catch(() => setError("Không tải được lịch sử trận đấu."))
       .finally(() => setLoading(false));
-  }, [seasonId, teamId]);
+  };
 
-  const formatDate = (dt) => {
-    if (!dt) return '—';
-    return new Date(dt).toLocaleDateString('vi-VN', { day: '2-digit', month: '2-digit', year: 'numeric' });
+  useEffect(() => {
+    axiosClient
+      .get("/admin/seasons")
+      .then((r) => {
+        const list = r.data?.data || [];
+        setSeasons(list);
+        const active = list.find((s) => s.Status === "ACTIVE") || list[0];
+        if (active) {
+          setSeasonId(active.SeasonID);
+          fetchMatches(active.SeasonID);
+        } else setLoading(false);
+      })
+      .catch(() => {
+        setError("Không tải được mùa giải.");
+        setLoading(false);
+      });
+  }, []); // eslint-disable-line react-hooks/exhaustive-deps
+
+  const handleSeasonChange = (e) => {
+    setSeasonId(e.target.value);
+    fetchMatches(e.target.value);
   };
 
   return (
-    <div className="min-h-[calc(100vh-80px)] h-full flex-1 w-full bg-[#050c18] text-slate-200 p-6 font-sans relative overflow-hidden">
-      <div className="absolute top-[-10%] left-[-5%] w-[400px] h-[400px] bg-red-500/8 rounded-full blur-[130px] pointer-events-none"></div>
-      <div className="absolute bottom-[-10%] right-[-5%] w-[400px] h-[400px] bg-purple-500/8 rounded-full blur-[130px] pointer-events-none"></div>
+    <div
+      className="min-h-screen relative overflow-x-hidden text-slate-200"
+      style={{
+        background: "#080c16",
+        fontFamily: "'Rajdhani','Segoe UI',sans-serif",
+      }}
+    >
+      <style>{STYLE}</style>
 
-      <div className="max-w-5xl mx-auto relative z-10">
+      <div className="absolute inset-0 pointer-events-none">
+        <div
+          className="absolute inset-0 opacity-[0.03]"
+          style={{
+            backgroundImage:
+              "linear-gradient(rgba(167,139,250,.8) 1px,transparent 1px),linear-gradient(90deg,rgba(167,139,250,.8) 1px,transparent 1px)",
+            backgroundSize: "40px 40px",
+          }}
+        />
+        <div
+          className="absolute top-0 right-0 w-[400px] h-80 rounded-full"
+          style={{
+            background:
+              "radial-gradient(ellipse,rgba(167,139,250,.1) 0%,transparent 70%)",
+          }}
+        />
+      </div>
+
+      <div className="relative z-10 max-w-5xl mx-auto px-4 sm:px-6 py-8">
         {/* Header */}
-        <div className="flex flex-wrap items-center justify-between gap-4 mb-8 bg-slate-900/60 backdrop-blur-md p-6 rounded-2xl border border-slate-800">
-          <div>
-            <h1 className="text-3xl font-black italic tracking-wider text-transparent bg-clip-text bg-gradient-to-r from-red-400 to-orange-500 uppercase mb-1">
-              ⚔️ Lịch Sử Thi Đấu
-            </h1>
-            <p className="text-slate-400 text-sm">Kết quả, tỉ số và chi tiết các trận đấu đã diễn ra</p>
+        <div className="fade-up mb-6">
+          <div className="flex items-center gap-2 mb-1">
+            <div className="w-2 h-2 rounded-full bg-purple-400 animate-pulse" />
+            <span
+              className="text-xs font-bold uppercase tracking-[0.25em]"
+              style={{ color: "rgba(167,139,250,.7)" }}
+            >
+              Lịch Sử
+            </span>
           </div>
-          <div className="flex gap-3 flex-wrap">
-            <select value={seasonId} onChange={e => setSeasonId(e.target.value)}
-              className="bg-slate-950/80 border border-slate-700 text-red-300 rounded-lg px-4 py-2 text-sm font-semibold focus:outline-none focus:border-red-500">
-              <option value="">-- Mùa giải --</option>
-              {seasons.map(s => <option key={s.SeasonID} value={s.SeasonID}>{s.SeasonName}</option>)}
-            </select>
-            <select value={teamId} onChange={e => setTeamId(e.target.value)}
-              className="bg-slate-950/80 border border-slate-700 text-slate-300 rounded-lg px-4 py-2 text-sm font-semibold focus:outline-none focus:border-slate-500">
-              <option value="">Tất cả đội</option>
-              {teams.map(t => <option key={t.TeamID} value={t.TeamID}>{t.TeamName}</option>)}
-            </select>
-          </div>
+          <h1
+            className="text-3xl font-black uppercase text-white"
+            style={{
+              fontFamily: "'Orbitron',monospace",
+              textShadow: "0 0 30px rgba(167,139,250,.3)",
+            }}
+          >
+            ⚔️ Lịch Sử Trận Đấu
+          </h1>
+          <p className="text-sm mt-1" style={{ color: "rgba(148,163,184,.6)" }}>
+            Kết quả các trận đấu đã hoàn thành.
+          </p>
         </div>
 
-        {/* Stats summary */}
-        {matches.length > 0 && (
-          <div className="grid grid-cols-3 gap-4 mb-6">
-            {[
-              { label: 'Tổng trận', value: matches.length, color: 'text-slate-300' },
-              { label: 'Đội thắng nhiều nhất', value: (() => {
-                const cnt = {};
-                matches.forEach(m => { cnt[m.WinnerTeamID] = (cnt[m.WinnerTeamID] || 0) + 1; });
-                const top = Object.entries(cnt).sort((a, b) => b[1] - a[1])[0];
-                return top ? `${top[0]} (${top[1]}W)` : '—';
-              })(), color: 'text-emerald-400' },
-              { label: 'Tỉ số phổ biến', value: (() => {
-                const cnt = {};
-                matches.forEach(m => { const k = `${m.Team1Score}-${m.Team2Score}`; cnt[k] = (cnt[k] || 0) + 1; });
-                const top = Object.entries(cnt).sort((a, b) => b[1] - a[1])[0];
-                return top ? top[0] : '—';
-              })(), color: 'text-cyan-400' },
-            ].map((s, i) => (
-              <div key={i} className="bg-slate-900/60 border border-slate-800 rounded-xl p-4 text-center">
-                <div className={`text-xl font-black ${s.color}`}>{s.value}</div>
-                <div className="text-xs text-slate-600 mt-1">{s.label}</div>
-              </div>
+        {/* Season selector */}
+        <div className="fade-up d1 flex items-center gap-3 mb-6 flex-wrap">
+          <select
+            value={seasonId}
+            onChange={handleSeasonChange}
+            className="text-sm font-semibold rounded-xl px-4 py-2.5 outline-none"
+            style={{
+              background: "rgba(13,17,30,.9)",
+              border: "1px solid rgba(167,139,250,.25)",
+              color: "#a78bfa",
+              fontFamily: "'Orbitron',monospace",
+              fontSize: "0.75rem",
+            }}
+          >
+            {seasons.map((s) => (
+              <option key={s.SeasonID} value={s.SeasonID}>
+                {s.SeasonName}
+              </option>
             ))}
+          </select>
+          {loading && (
+            <div className="flex items-center gap-2">
+              <span className="spinner" />
+              <span
+                className="text-xs"
+                style={{ color: "rgba(148,163,184,.5)" }}
+              >
+                Đang tải...
+              </span>
+            </div>
+          )}
+        </div>
+
+        {error && (
+          <div
+            className="mb-5 px-5 py-3 rounded-xl text-sm font-semibold"
+            style={{
+              background: "rgba(248,113,113,.08)",
+              border: "1px solid rgba(248,113,113,.25)",
+              color: "#f87171",
+            }}
+          >
+            ⚠️ {error}
           </div>
         )}
 
-        {/* Match list */}
-        {loading ? (
-          <div className="flex justify-center py-20">
-            <div className="animate-spin rounded-full h-12 w-12 border-t-2 border-b-2 border-red-500"></div>
+        {!loading && matches.length === 0 && !error && (
+          <div
+            className="fade-up text-center py-20"
+            style={{ color: "rgba(148,163,184,.4)" }}
+          >
+            <div className="text-4xl mb-3">🏟️</div>
+            <div className="text-sm">
+              Chưa có trận đấu nào hoàn thành trong mùa này.
+            </div>
           </div>
-        ) : matches.length === 0 ? (
-          <div className="text-center py-20 text-slate-500">
-            {seasonId ? 'Chưa có trận đấu nào trong mùa giải này.' : 'Vui lòng chọn mùa giải.'}
-          </div>
-        ) : (
-          <div className="space-y-3">
-            {matches.map(m => (
-              <div key={m.MatchID}
-                onClick={() => navigate(`/matches/${m.MatchID}`)}
-                className="group bg-slate-900/60 backdrop-blur-xl border border-slate-800 rounded-2xl p-5 hover:border-red-500/30 hover:shadow-[0_0_20px_rgba(239,68,68,0.08)] transition-all cursor-pointer">
-                <div className="flex flex-wrap items-center gap-4">
-                  {/* Team 1 */}
-                  <div className={`flex-1 text-center min-w-[90px] transition-all ${m.WinnerTeamID === m.Team1ID ? 'opacity-100' : 'opacity-60'}`}>
-                    <div className={`font-black text-lg ${m.WinnerTeamID === m.Team1ID ? 'text-emerald-400' : 'text-slate-400'}`}>
-                      {m.WinnerTeamID === m.Team1ID && '🏆 '}{m.Team1Short || m.Team1ID}
-                    </div>
-                    <div className="text-xs text-slate-500 mt-0.5">{m.Team1Name}</div>
-                  </div>
+        )}
 
-                  {/* Score */}
-                  <div className="text-center shrink-0 px-2">
-                    <div className="flex items-center gap-2">
-                      <span className={`text-3xl font-black ${m.WinnerTeamID === m.Team1ID ? 'text-emerald-400' : 'text-red-400'}`}>{m.Team1Score}</span>
-                      <span className="text-slate-700 font-black text-xl">:</span>
-                      <span className={`text-3xl font-black ${m.WinnerTeamID === m.Team2ID ? 'text-emerald-400' : 'text-red-400'}`}>{m.Team2Score}</span>
-                    </div>
-                    <div className="text-xs text-slate-600 mt-1">{m.Format || 'BO3'}</div>
-                  </div>
+        {/* Table */}
+        {matches.length > 0 && (
+          <div
+            className="fade-up d2 rounded-2xl overflow-hidden"
+            style={{
+              background: "rgba(13,17,30,.9)",
+              border: "1px solid rgba(167,139,250,.1)",
+            }}
+          >
+            <div className="overflow-x-auto">
+              <table className="w-full text-sm">
+                <thead>
+                  <tr
+                    style={{
+                      borderBottom: "1px solid rgba(167,139,250,.08)",
+                      background: "rgba(0,0,0,.3)",
+                    }}
+                  >
+                    {[
+                      "Ngày",
+                      "Đội 1",
+                      "Tỉ số",
+                      "Đội 2",
+                      "Thắng",
+                      "MVP",
+                      "Format",
+                    ].map((h) => (
+                      <th
+                        key={h}
+                        className="px-4 py-4 text-left text-xs font-bold uppercase tracking-widest whitespace-nowrap"
+                        style={{ color: "rgba(148,163,184,.5)" }}
+                      >
+                        {h}
+                      </th>
+                    ))}
+                  </tr>
+                </thead>
+                <tbody>
+                  {matches.map((m, i) => (
+                    <tr
+                      key={m.MatchID || i}
+                      style={{
+                        borderBottom: "1px solid rgba(167,139,250,.04)",
+                      }}
+                      onMouseEnter={(e) =>
+                        (e.currentTarget.style.background =
+                          "rgba(255,255,255,.02)")
+                      }
+                      onMouseLeave={(e) =>
+                        (e.currentTarget.style.background = "transparent")
+                      }
+                    >
+                      {/* Ngày */}
+                      <td
+                        className="px-4 py-4 text-xs whitespace-nowrap"
+                        style={{ color: "rgba(148,163,184,.6)" }}
+                      >
+                        {fmtDate(m.MatchDate)}
+                      </td>
 
-                  {/* Team 2 */}
-                  <div className={`flex-1 text-center min-w-[90px] transition-all ${m.WinnerTeamID === m.Team2ID ? 'opacity-100' : 'opacity-60'}`}>
-                    <div className={`font-black text-lg ${m.WinnerTeamID === m.Team2ID ? 'text-emerald-400' : 'text-slate-400'}`}>
-                      {m.WinnerTeamID === m.Team2ID && '🏆 '}{m.Team2Short || m.Team2ID}
-                    </div>
-                    <div className="text-xs text-slate-500 mt-0.5">{m.Team2Name}</div>
-                  </div>
+                      {/* Team 1 */}
+                      <td className="px-4 py-4">
+                        <div
+                          className="font-black text-sm"
+                          style={{
+                            color:
+                              m.WinnerShort === m.Team1Short
+                                ? "#34d399"
+                                : "#94a3b8",
+                            fontFamily: "'Orbitron',monospace",
+                          }}
+                        >
+                          {m.Team1Short}
+                        </div>
+                        <div
+                          className="text-xs"
+                          style={{ color: "rgba(148,163,184,.4)" }}
+                        >
+                          {m.Team1Name}
+                        </div>
+                      </td>
 
-                  {/* Meta */}
-                  <div className="text-right shrink-0 ml-auto">
-                    <div className="text-xs text-slate-500">{formatDate(m.MatchDate)}</div>
-                    {m.Venue && <div className="text-xs text-slate-600 mt-0.5">📍 {m.Venue}</div>}
-                    <div className="text-xs text-slate-600 group-hover:text-red-400 transition-colors mt-1 font-semibold">
-                      Chi tiết →
-                    </div>
-                  </div>
-                </div>
-              </div>
-            ))}
+                      {/* Score */}
+                      <td className="px-4 py-4">
+                        <span
+                          className="font-black px-3 py-1.5 rounded-lg text-sm"
+                          style={{
+                            background: "rgba(167,139,250,.1)",
+                            color: "#a78bfa",
+                            border: "1px solid rgba(167,139,250,.2)",
+                            fontFamily: "'Orbitron',monospace",
+                          }}
+                        >
+                          {m.Team1Score ?? "—"}:{m.Team2Score ?? "—"}
+                        </span>
+                      </td>
+
+                      {/* Team 2 */}
+                      <td className="px-4 py-4">
+                        <div
+                          className="font-black text-sm"
+                          style={{
+                            color:
+                              m.WinnerShort === m.Team2Short
+                                ? "#34d399"
+                                : "#94a3b8",
+                            fontFamily: "'Orbitron',monospace",
+                          }}
+                        >
+                          {m.Team2Short}
+                        </div>
+                        <div
+                          className="text-xs"
+                          style={{ color: "rgba(148,163,184,.4)" }}
+                        >
+                          {m.Team2Name}
+                        </div>
+                      </td>
+
+                      {/* Winner */}
+                      <td className="px-4 py-4">
+                        <span
+                          className="text-xs font-black px-2.5 py-1 rounded-lg"
+                          style={{
+                            background: "rgba(52,211,153,.12)",
+                            color: "#34d399",
+                            border: "1px solid rgba(52,211,153,.25)",
+                            fontFamily: "'Orbitron',monospace",
+                          }}
+                        >
+                          🏆 {m.WinnerShort || "—"}
+                        </span>
+                      </td>
+
+                      {/* MVP */}
+                      <td
+                        className="px-4 py-4 text-xs font-semibold"
+                        style={{ color: "#fbbf24" }}
+                      >
+                        {m.MVPNickname ? `⭐ ${m.MVPNickname}` : "—"}
+                      </td>
+
+                      {/* Format */}
+                      <td className="px-4 py-4">
+                        <span
+                          className="text-xs px-2 py-0.5 rounded"
+                          style={{
+                            background: "rgba(148,163,184,.08)",
+                            color: "rgba(148,163,184,.6)",
+                          }}
+                        >
+                          {m.Format || "BO3"}
+                        </span>
+                      </td>
+                    </tr>
+                  ))}
+                </tbody>
+              </table>
+            </div>
           </div>
         )}
       </div>
