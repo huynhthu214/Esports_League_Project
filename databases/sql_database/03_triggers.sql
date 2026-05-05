@@ -64,12 +64,17 @@ AS
 BEGIN
     SET NOCOUNT ON;
     IF EXISTS (
-        SELECT r.TeamID, r.SeasonID
-        FROM Rosters r
-        INNER JOIN inserted i ON r.TeamID = i.TeamID AND r.SeasonID = i.SeasonID
-        WHERE r.Status = 'ACTIVE'
-        GROUP BY r.TeamID, r.SeasonID
-        HAVING COUNT(*) > 10
+        SELECT i.TeamID, i.SeasonID
+        FROM inserted i
+        WHERE i.Status = 'ACTIVE'
+        GROUP BY i.TeamID, i.SeasonID
+        HAVING (
+            -- Đếm số người ACTIVE hiện có trong Rosters (không tính inserted)
+            SELECT COUNT(*) FROM Rosters r
+            WHERE r.TeamID = i.TeamID 
+              AND r.SeasonID = i.SeasonID
+              AND r.Status = 'ACTIVE'
+        ) > 10
     )
     BEGIN
         ROLLBACK TRANSACTION;

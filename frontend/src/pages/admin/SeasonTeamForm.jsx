@@ -54,7 +54,7 @@ const SeasonTeamForm = () => {
     setLoading(true);
     setStatus(null);
     try {
-      const res = await axiosClient.post("/season-teams", {
+      const res = await axiosClient.post("/admin/season-teams", {
         seasonId,
         teamIds: selectedTeams,
       });
@@ -66,7 +66,7 @@ const SeasonTeamForm = () => {
       });
       setSelectedTeams([]);
       // Reload danh sách đã đăng ký
-      const r2 = await axiosClient.get("/season-teams", {
+      const r2 = await axiosClient.get("/admin/season-teams", {
         params: { seasonId },
       });
       setRegisteredTeams((r2.data.data || []).map((t) => t.TeamID));

@@ -1,1 +1,63 @@
 @import "tailwindcss";
+
+@layer components {
+  /* Surface */
+  .ui-card {
+    @apply bg-slate-900/60 backdrop-blur-xl border border-slate-800 rounded-2xl shadow-lg;
+  }
+  .ui-card-soft {
+    @apply bg-slate-950/40 border border-slate-800/80 rounded-2xl;
+  }
+
+  .ui-select {
+    @apply w-full rounded-xl px-4 py-3 text-sm font-semibold outline-none transition-colors;
+    @apply bg-slate-950/70 text-slate-200 border border-slate-700/80;
+    @apply focus:border-cyan-500/60;
+    @apply disabled:opacity-40 disabled:cursor-not-allowed;
+    @apply pr-10;
+  }
+
+  .ui-input {
+    @apply w-full rounded-xl px-4 py-3 text-sm font-semibold outline-none transition-colors;
+    @apply bg-slate-950/70 text-slate-200 border border-slate-700/80;
+    @apply focus:border-cyan-500/60;
+    @apply disabled:opacity-40 disabled:cursor-not-allowed;
+  }
+  .ui-label {
+    @apply block text-xs font-black text-slate-500 uppercase tracking-widest mb-2;
+  }
+  .ui-help {
+    @apply text-xs text-slate-500;
+  }
+
+  /* Buttons */
+  .ui-btn {
+    @apply inline-flex items-center justify-center gap-2 rounded-xl px-4 py-2.5 text-sm font-black uppercase tracking-widest;
+    @apply transition-all disabled:opacity-40 disabled:cursor-not-allowed;
+  }
+  .ui-btn-primary {
+    @apply inline-flex items-center justify-center gap-2 rounded-xl px-4 py-2.5 text-sm font-black uppercase tracking-widest;
+    @apply transition-all disabled:opacity-40 disabled:cursor-not-allowed;
+    @apply text-white;
+    @apply bg-gradient-to-r from-cyan-600 to-blue-600 hover:from-cyan-500 hover:to-blue-500;
+    @apply shadow-[0_0_18px_rgba(34,211,238,0.18)];
+  }
+  .ui-btn-danger {
+    @apply inline-flex items-center justify-center gap-2 rounded-xl px-4 py-2.5 text-sm font-black uppercase tracking-widest;
+    @apply transition-all disabled:opacity-40 disabled:cursor-not-allowed;
+    @apply text-white;
+    @apply bg-gradient-to-r from-red-600 to-orange-600 hover:from-red-500 hover:to-orange-500;
+    @apply shadow-[0_0_18px_rgba(239,68,68,0.16)];
+  }
+  .ui-btn-ghost {
+    @apply inline-flex items-center justify-center gap-2 rounded-xl px-4 py-2.5 text-sm font-black uppercase tracking-widest;
+    @apply transition-all disabled:opacity-40 disabled:cursor-not-allowed;
+    @apply text-slate-300;
+    @apply bg-slate-800/60 hover:bg-slate-700/70 border border-slate-700/70;
+  }
+
+  /* Badges */
+  .ui-badge {
+    @apply text-xs font-black uppercase tracking-wider px-2.5 py-1 rounded-full border;
+  }
+}

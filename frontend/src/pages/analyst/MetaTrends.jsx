@@ -27,18 +27,29 @@ const MetaTrends = () => {
   const [seasons, setSeasons] = useState([]);
   const [seasonId, setSeasonId] = useState("");
   const [heroes, setHeroes] = useState([]);
+  const [totalPicks, setTotalPicks] = useState(0);
+  const [limit, setLimit] = useState(10);
+  const [sortBy, setSortBy] = useState("pick_count");
   const [loading, setLoading] = useState(false);
   const [error, setError] = useState("");
 
-  const fetchHeroes = (sid) => {
+  const fetchHeroes = (sid, next = {}) => {
     setLoading(true);
     setError("");
     axiosClient
-      .get("/analytics/meta-heroes", { params: sid ? { seasonId: sid } : {} })
+      .get("/analytics/meta-heroes", {
+        params: {
+          ...(sid ? { seasonId: sid } : {}),
+          limit: next.limit ?? limit,
+          sortBy: next.sortBy ?? sortBy,
+        },
+      })
       .then((r) => {
         const d = r.data;
-        if (!d?.length) setError("Chưa có dữ liệu tướng trong MongoDB.");
-        else setHeroes(d);
+        const list = d?.heroes || [];
+        setTotalPicks(d?.total_picks || 0);
+        if (!list?.length) setError("Chưa có dữ liệu tướng trong MongoDB.");
+        else setHeroes(list);
       })
       .catch(() => setError("Không tải được dữ liệu Meta."))
       .finally(() => setLoading(false));
@@ -64,6 +75,16 @@ const MetaTrends = () => {
     fetchHeroes(e.target.value);
   };
   const maxPick = heroes[0]?.pick_count || 1;
+  const handleLimitChange = (e) => {
+    const n = parseInt(e.target.value, 10) || 10;
+    setLimit(n);
+    fetchHeroes(seasonId, { limit: n });
+  };
+  const handleSortChange = (e) => {
+    const s = e.target.value;
+    setSortBy(s);
+    fetchHeroes(seasonId, { sortBy: s });
+  };
 
   return (
     <div
@@ -131,6 +152,41 @@ const MetaTrends = () => {
                 {s.SeasonName}
               </option>
             ))}
+          </select>
+          <select
+            value={limit}
+            onChange={handleLimitChange}
+            className="text-sm font-semibold rounded-xl px-4 py-2.5 outline-none"
+            style={{
+              background: "rgba(13,17,30,.9)",
+              border: "1px solid rgba(52,211,153,.15)",
+              color: "rgba(226,232,240,.9)",
+              fontFamily: "'Orbitron',monospace",
+              fontSize: "0.72rem",
+            }}
+          >
+            {[10, 15, 20, 30].map((n) => (
+              <option key={n} value={n}>
+                Top {n}
+              </option>
+            ))}
+          </select>
+          <select
+            value={sortBy}
+            onChange={handleSortChange}
+            className="text-sm font-semibold rounded-xl px-4 py-2.5 outline-none"
+            style={{
+              background: "rgba(13,17,30,.9)",
+              border: "1px solid rgba(52,211,153,.15)",
+              color: "rgba(226,232,240,.9)",
+              fontFamily: "'Orbitron',monospace",
+              fontSize: "0.72rem",
+            }}
+          >
+            <option value="pick_count">Sort: Pick nhiều</option>
+            <option value="win_rate">Sort: Win rate</option>
+            <option value="avg_kda">Sort: KDA TB</option>
+            <option value="avg_gpm">Sort: GPM TB</option>
           </select>
           {loading && (
             <div className="flex items-center gap-2">
@@ -206,13 +262,37 @@ const MetaTrends = () => {
                     >
                       {h._id || "Unknown"}
                     </div>
-                    <div className="flex items-center gap-3 text-xs mt-0.5">
+                    <div className="flex items-center gap-3 text-xs mt-0.5 flex-wrap">
                       <span style={{ color: "rgba(148,163,184,.6)" }}>
                         {h.pick_count} lần pick
+                      </span>
+                      <span style={{ color: "rgba(148,163,184,.6)" }}>
+                        PR {h.pick_rate}%
+                        {totalPicks ? (
+                          <span style={{ color: "rgba(148,163,184,.35)" }}>
+                            {" "}
+                            (/{totalPicks})
+                          </span>
+                        ) : null}
                       </span>
                       <span className="font-bold" style={{ color: wrColor }}>
                         WR {h.win_rate}%
                       </span>
+                      {h.avg_kda != null && (
+                        <span style={{ color: "rgba(56,189,248,.85)" }}>
+                          KDA {h.avg_kda}
+                        </span>
+                      )}
+                    </div>
+                    <div
+                      className="text-[11px] mt-1"
+                      style={{ color: "rgba(148,163,184,.45)" }}
+                    >
+                      {h.avg_kills != null ? `${h.avg_kills}` : "-"} /
+                      {h.avg_deaths != null ? ` ${h.avg_deaths}` : " -"} /
+                      {h.avg_assists != null ? ` ${h.avg_assists}` : " -"}{" "}
+                      <span style={{ color: "rgba(148,163,184,.3)" }}>·</span>{" "}
+                      GPM {h.avg_gpm != null ? h.avg_gpm : "-"}
                     </div>
                   </div>
                   <div className="text-right flex-shrink-0">
@@ -220,13 +300,13 @@ const MetaTrends = () => {
                       className="text-xs uppercase tracking-widest"
                       style={{ color: "rgba(148,163,184,.4)" }}
                     >
-                      Pick Rate
+                      Share
                     </div>
                     <div
                       className="font-black text-sm"
                       style={{ color, fontFamily: "'Orbitron',monospace" }}
                     >
-                      {((h.pick_count / maxPick) * 100).toFixed(0)}%
+                      {h.pick_rate != null ? `${h.pick_rate}%` : "-"}
                     </div>
                   </div>
                 </div>

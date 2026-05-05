@@ -28,6 +28,7 @@ import SeasonForm from "./pages/admin/SeasonForm";
 import SeasonTeamForm from "./pages/admin/SeasonTeamForm";
 import MatchResultForm from "./pages/admin/MatchResultForm";
 import PlayerManagement from "./pages/admin/PlayerManagement";
+import RegisterSeasonTeams from "./pages/admin/RegisterSeasonTeams";
 
 // Analyst pages
 import AnalystDashboard from "./pages/analyst/AnalystDashboard";
@@ -76,7 +77,6 @@ function App() {
                   <Route path="matches" element={<MatchHistory />} />
                   <Route path="matches/:matchId" element={<MatchDetail />} />
                   <Route path="transfers" element={<TransferHistory />} />
-
                   {/* ── ADMIN ONLY ── */}
                   <Route
                     path="admin"
@@ -142,7 +142,10 @@ function App() {
                       </ProtectedRoute>
                     }
                   />
-
+                  <Route
+                    path="admin/season-teams"
+                    element={<RegisterSeasonTeams />}
+                  />
                   {/* ── ANALYST / COACH / ADMIN ── */}
                   <Route
                     path="analyst"
@@ -193,7 +196,6 @@ function App() {
                     }
                   />
                   <Route path="analyst/predict" element={<PredictMatch />} />
-
                   <Route path="*" element={<Navigate to="/" replace />} />
                 </Routes>
               </AppLayout>

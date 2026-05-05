@@ -1,6 +1,8 @@
 import { useState, useEffect, useCallback } from "react";
 import axiosClient from "../../api/axiosClient";
 
+/* eslint-disable react-hooks/set-state-in-effect */
+
 const STYLE = `
   @import url('https://fonts.googleapis.com/css2?family=Orbitron:wght@700;900&family=Rajdhani:wght@400;500;600;700&display=swap');
   @keyframes fadeUp { from{opacity:0;transform:translateY(16px)} to{opacity:1;transform:translateY(0)} }

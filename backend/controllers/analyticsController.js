@@ -157,45 +157,115 @@ exports.getTeamH2H = async (req, res) => {
 // 4. Meta Tướng (MongoDB)
 exports.getMetaHeroes = async (req, res) => {
   try {
-    const { seasonId } = req.query;
+    const { seasonId, limit = 10, sortBy = "pick_count" } = req.query;
+    const safeLimit = Math.min(Math.max(parseInt(limit, 10) || 10, 5), 50);
+    const sortMap = {
+      pick_count: { pick_count: -1 },
+      win_rate: { win_rate: -1, pick_count: -1 },
+      avg_kda: { avg_kda: -1, pick_count: -1 },
+      avg_gpm: { avg_gpm: -1, pick_count: -1 },
+    };
+    const sortStage = sortMap[sortBy] || sortMap.pick_count;
     const matchStage = seasonId
       ? { $match: { season_id: seasonId } }
       : { $match: {} };
-    const result = await getMongoDb()
+    const agg = await getMongoDb()
       .collection("match_stats")
       .aggregate([
         matchStage,
         { $unwind: "$teams" },
         { $unwind: "$teams.players" },
+        { $match: { "teams.players.hero": { $ne: null } } },
         {
-          $group: {
-            _id: "$teams.players.hero",
-            pick_count: { $sum: 1 },
-            win_count: {
-              $sum: { $cond: [{ $eq: ["$teams.result", "WIN"] }, 1, 0] },
-            },
+          $addFields: {
+            __hero: "$teams.players.hero",
+            __kills: { $ifNull: ["$teams.players.kills", 0] },
+            __deaths: { $ifNull: ["$teams.players.deaths", 0] },
+            __assists: { $ifNull: ["$teams.players.assists", 0] },
+            __gold: { $ifNull: ["$teams.players.gold", 0] },
+            __duration: { $ifNull: ["$duration_minutes", 0] },
+            __win: { $cond: [{ $eq: ["$teams.result", "WIN"] }, 1, 0] },
           },
         },
-        { $match: { _id: { $ne: null } } },
         {
-          $project: {
-            _id: 1,
-            pick_count: 1,
-            win_rate: {
-              $round: [
-                {
-                  $multiply: [{ $divide: ["$win_count", "$pick_count"] }, 100],
-                },
-                1,
+          $addFields: {
+            __kda: {
+              $divide: [
+                { $add: ["$__kills", "$__assists"] },
+                { $cond: [{ $gt: ["$__deaths", 0] }, "$__deaths", 1] },
+              ],
+            },
+            __gpm: {
+              $cond: [
+                { $gt: ["$__duration", 0] },
+                { $divide: ["$__gold", "$__duration"] },
+                null,
               ],
             },
           },
         },
-        { $sort: { pick_count: -1 } },
-        { $limit: 10 },
+        {
+          $facet: {
+            totals: [{ $count: "total_picks" }],
+            heroes: [
+              {
+                $group: {
+                  _id: "$__hero",
+                  pick_count: { $sum: 1 },
+                  win_count: { $sum: "$__win" },
+                  avg_kills: { $avg: "$__kills" },
+                  avg_deaths: { $avg: "$__deaths" },
+                  avg_assists: { $avg: "$__assists" },
+                  avg_gold: { $avg: "$__gold" },
+                  avg_kda: { $avg: "$__kda" },
+                  avg_gpm: { $avg: "$__gpm" },
+                },
+              },
+              {
+                $project: {
+                  _id: 1,
+                  pick_count: 1,
+                  win_rate: {
+                    $round: [
+                      {
+                        $multiply: [
+                          { $divide: ["$win_count", "$pick_count"] },
+                          100,
+                        ],
+                      },
+                      1,
+                    ],
+                  },
+                  avg_kills: { $round: ["$avg_kills", 1] },
+                  avg_deaths: { $round: ["$avg_deaths", 1] },
+                  avg_assists: { $round: ["$avg_assists", 1] },
+                  avg_gold: { $round: ["$avg_gold", 0] },
+                  avg_kda: { $round: ["$avg_kda", 2] },
+                  avg_gpm: {
+                    $cond: [
+                      { $ne: ["$avg_gpm", null] },
+                      { $round: ["$avg_gpm", 0] },
+                      null,
+                    ],
+                  },
+                },
+              },
+              { $sort: sortStage },
+              { $limit: safeLimit },
+            ],
+          },
+        },
       ])
       .toArray();
-    res.json(result);
+
+    const totalPicks = agg?.[0]?.totals?.[0]?.total_picks || 0;
+    const heroes = (agg?.[0]?.heroes || []).map((h) => ({
+      ...h,
+      pick_rate:
+        totalPicks > 0 ? +((h.pick_count / totalPicks) * 100).toFixed(2) : 0,
+    }));
+
+    res.json({ total_picks: totalPicks, heroes });
   } catch (err) {
     res.status(500).json({ error: err.message });
   }
@@ -341,4 +411,166 @@ exports.predictMatch = async (req, res) => {
   } catch (err) {
     res.status(500).json({ error: err.message });
   }
+};
+
+// 7. Timeseries theo tuyển thủ (MongoDB) — phục vụ Line chart
+// GET /api/analytics/players/:id/timeseries?seasonId=SS2025&limit=10
+exports.getPlayerTimeseries = async (req, res) => {
+  try {
+    const playerId = req.params.id;
+    const { seasonId, limit = 10 } = req.query;
+    const safeLimit = Math.min(Math.max(parseInt(limit, 10) || 10, 5), 30);
+
+    const matchStage = {
+      $match: {
+        ...(seasonId ? { season_id: seasonId } : {}),
+        "teams.players.player_id": playerId,
+      },
+    };
+
+    const rows = await getMongoDb()
+      .collection("match_stats")
+      .aggregate([
+        matchStage,
+        { $sort: { match_date: -1 } },
+        { $limit: safeLimit },
+        { $unwind: "$teams" },
+        { $unwind: "$teams.players" },
+        { $match: { "teams.players.player_id": playerId } },
+        {
+          $project: {
+            _id: 0,
+            match_id: 1,
+            season_id: 1,
+            match_date: 1,
+            team_id: "$teams.team_id",
+            result: "$teams.result",
+            kills: { $ifNull: ["$teams.players.kills", 0] },
+            deaths: { $ifNull: ["$teams.players.deaths", 0] },
+            assists: { $ifNull: ["$teams.players.assists", 0] },
+            gold: { $ifNull: ["$teams.players.gold", 0] },
+            duration_minutes: { $ifNull: ["$duration_minutes", 0] },
+          },
+        },
+        {
+          $addFields: {
+            kda: {
+              $divide: [
+                { $add: ["$kills", "$assists"] },
+                { $cond: [{ $gt: ["$deaths", 0] }, "$deaths", 1] },
+              ],
+            },
+            gpm: {
+              $cond: [
+                { $gt: ["$duration_minutes", 0] },
+                { $divide: ["$gold", "$duration_minutes"] },
+                null,
+              ],
+            },
+          },
+        },
+        {
+          $project: {
+            match_id: 1,
+            match_date: 1,
+            season_id: 1,
+            team_id: 1,
+            result: 1,
+            kills: 1,
+            deaths: 1,
+            assists: 1,
+            gold: 1,
+            kda: { $round: ["$kda", 2] },
+            gpm: {
+              $cond: [{ $ne: ["$gpm", null] }, { $round: ["$gpm", 0] }, null],
+            },
+          },
+        },
+        { $sort: { match_date: 1 } },
+      ])
+      .toArray();
+
+    res.json({ playerId, seasonId: seasonId || null, data: rows });
+  } catch (err) {
+    res.status(500).json({ error: err.message });
+  }
+};
+
+// 8. So kèo 2 đội (MongoDB) — radar/tổng quan
+// GET /api/analytics/compare-teams?team1=SGD&team2=HNL&seasonId=SS2025
+exports.compareTeams = async (req, res) => {
+  try {
+    const { team1, team2, seasonId } = req.query;
+    if (!team1 || !team2)
+      return res.status(400).json({ message: "Thiếu team1 hoặc team2." });
+
+    const matchStage = {
+      $match: {
+        ...(seasonId ? { season_id: seasonId } : {}),
+        "teams.team_id": { $in: [team1, team2] },
+      },
+    };
+
+    const rows = await getMongoDb()
+      .collection("match_stats")
+      .aggregate([
+        matchStage,
+        { $unwind: "$teams" },
+        { $match: { "teams.team_id": { $in: [team1, team2] } } },
+        {
+          $addFields: {
+            __team: "$teams.team_id",
+            __win: { $cond: [{ $eq: ["$teams.result", "WIN"] }, 1, 0] },
+            __kills: { $sum: "$teams.players.kills" },
+            __gold: { $sum: "$teams.players.gold" },
+          },
+        },
+        {
+          $group: {
+            _id: "$__team",
+            matches: { $sum: 1 },
+            wins: { $sum: "$__win" },
+            avg_kills: { $avg: "$__kills" },
+            avg_gold: { $avg: "$__gold" },
+          },
+        },
+        {
+          $project: {
+            _id: 1,
+            matches: 1,
+            win_rate: {
+              $round: [
+                { $multiply: [{ $divide: ["$wins", "$matches"] }, 100] },
+                1,
+              ],
+            },
+            avg_kills: { $round: ["$avg_kills", 1] },
+            avg_gold: { $round: ["$avg_gold", 0] },
+          },
+        },
+      ])
+      .toArray();
+
+    res.json(rows);
+  } catch (err) {
+    res.status(500).json({ error: err.message });
+  }
+};
+
+// 9. External provider status (PandaScore/Abios) — skeleton
+// GET /api/analytics/external/status
+exports.getExternalStatus = async (req, res) => {
+  const hasPanda =
+    !!process.env.PANDASCORE_TOKEN &&
+    String(process.env.PANDASCORE_TOKEN).trim();
+  const hasAbios =
+    !!process.env.ABIOS_TOKEN && String(process.env.ABIOS_TOKEN).trim();
+
+  res.json({
+    providers: {
+      pandascore: { configured: !!hasPanda },
+      abios: { configured: !!hasAbios },
+    },
+    note: "Chỉ là khung tích hợp. Khi có token, có thể mở rộng gọi API gốc để tự động cập nhật chỉ số.",
+  });
 };

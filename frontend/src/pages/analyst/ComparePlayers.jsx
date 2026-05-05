@@ -1,5 +1,28 @@
 import { useState, useEffect } from "react";
 import axiosClient from "../../api/axiosClient";
+import {
+  Chart as ChartJS,
+  RadialLinearScale,
+  PointElement,
+  LineElement,
+  Filler,
+  Tooltip,
+  Legend,
+  CategoryScale,
+  LinearScale,
+} from "chart.js";
+import { Radar, Line } from "react-chartjs-2";
+
+ChartJS.register(
+  RadialLinearScale,
+  PointElement,
+  LineElement,
+  Filler,
+  Tooltip,
+  Legend,
+  CategoryScale,
+  LinearScale,
+);
 
 const STYLE = `
   @import url('https://fonts.googleapis.com/css2?family=Orbitron:wght@700;900&family=Rajdhani:wght@400;500;600;700&display=swap');
@@ -18,10 +41,16 @@ const METRICS = [
 ];
 
 const ComparePlayers = () => {
+  const [mode, setMode] = useState("players"); // players | teams
   const [players, setPlayers] = useState([]);
+  const [teams, setTeams] = useState([]);
+  const [externalStatus, setExternalStatus] = useState(null);
   const [p1, setP1] = useState("");
   const [p2, setP2] = useState("");
   const [result, setResult] = useState([]);
+  const [ts1, setTs1] = useState([]);
+  const [ts2, setTs2] = useState([]);
+  const [trendMetric, setTrendMetric] = useState("gold"); // gold | kda
   const [loading, setLoading] = useState(false);
   const [error, setError] = useState("");
 
@@ -29,6 +58,14 @@ const ComparePlayers = () => {
     axiosClient
       .get("/admin/players")
       .then((r) => setPlayers(r.data?.data || []))
+      .catch(() => {});
+    axiosClient
+      .get("/admin/teams")
+      .then((r) => setTeams(r.data?.data || []))
+      .catch(() => {});
+    axiosClient
+      .get("/analytics/external/status")
+      .then((r) => setExternalStatus(r.data))
       .catch(() => {});
   }, []);
 
@@ -40,21 +77,80 @@ const ComparePlayers = () => {
     setLoading(true);
     setError("");
     setResult([]);
+    setTs1([]);
+    setTs2([]);
     axiosClient
       .get("/analytics/compare", { params: { p1, p2 } })
       .then((r) => {
-        if (!r.data?.length)
+        const rows = Array.isArray(r.data) ? r.data : [];
+        const ids = new Set(rows.map((x) => String(x?._id)));
+        const missing = [p1, p2].filter((id) => !ids.has(String(id)));
+
+        if (rows.length === 0) {
           setError("Không có dữ liệu MongoDB cho 2 tuyển thủ này.");
-        else setResult(r.data);
+          return;
+        }
+        if (missing.length > 0) {
+          setError(
+            `Thiếu dữ liệu MongoDB cho: ${missing.join(
+              ", ",
+            )}. Hãy nhập match_stats cho tuyển thủ này trước.`,
+          );
+          setResult(rows);
+          return;
+        }
+        setResult(rows);
       })
       .catch(() => setError("Không tải được dữ liệu so sánh."))
       .finally(() => setLoading(false));
+
+    Promise.all([
+      axiosClient.get(`/analytics/players/${p1}/timeseries`, {
+        params: { limit: 10 },
+      }),
+      axiosClient.get(`/analytics/players/${p2}/timeseries`, {
+        params: { limit: 10 },
+      }),
+    ])
+      .then(([a, b]) => {
+        setTs1(a.data?.data || []);
+        setTs2(b.data?.data || []);
+      })
+      .catch(() => {});
   };
 
-  const d1 = result.find((r) => r._id === p1) || {};
-  const d2 = result.find((r) => r._id === p2) || {};
-  const p1info = players.find((p) => p.PlayerID === p1) || {};
-  const p2info = players.find((p) => p.PlayerID === p2) || {};
+  const handleCompareTeams = () => {
+    if (!p1 || !p2 || p1 === p2) {
+      setError("Chọn 2 đội khác nhau.");
+      return;
+    }
+    setLoading(true);
+    setError("");
+    setResult([]);
+    setTs1([]);
+    setTs2([]);
+    axiosClient
+      .get("/analytics/compare-teams", { params: { team1: p1, team2: p2 } })
+      .then((r) => {
+        const rows = Array.isArray(r.data) ? r.data : [];
+        if (rows.length === 0)
+          setError("Không có dữ liệu MongoDB cho 2 đội này.");
+        else setResult(rows);
+      })
+      .catch(() => setError("Không tải được dữ liệu so kèo đội."))
+      .finally(() => setLoading(false));
+  };
+
+  const d1 = result.find((r) => String(r._id) === String(p1)) || {};
+  const d2 = result.find((r) => String(r._id) === String(p2)) || {};
+  const p1info =
+    mode === "players"
+      ? players.find((p) => p.PlayerID === p1) || {}
+      : teams.find((t) => t.TeamID === p1) || {};
+  const p2info =
+    mode === "players"
+      ? players.find((p) => p.PlayerID === p2) || {}
+      : teams.find((t) => t.TeamID === p2) || {};
   const better = (key, low) => {
     const v1 = d1[key] || 0,
       v2 = d2[key] || 0;
@@ -103,11 +199,73 @@ const ComparePlayers = () => {
             className="text-3xl font-black uppercase text-white"
             style={{ fontFamily: "'Orbitron',monospace" }}
           >
-            ⚖️ So Sánh Tuyển Thủ
+            ⚖️ So Kèo Trực Diện
           </h1>
           <p className="text-sm mt-1" style={{ color: "rgba(148,163,184,.6)" }}>
-            So sánh hiệu suất 2 tuyển thủ từ match_stats.
+            Radar chart (snapshot) + Line chart (trend) từ match_stats.
           </p>
+          {externalStatus?.providers && (
+            <div
+              className="text-xs mt-2"
+              style={{ color: "rgba(148,163,184,.55)" }}
+            >
+              External API: PandaScore{" "}
+              <b
+                style={{
+                  color: externalStatus.providers.pandascore.configured
+                    ? "#34d399"
+                    : "#f87171",
+                }}
+              >
+                {externalStatus.providers.pandascore.configured ? "ON" : "OFF"}
+              </b>{" "}
+              · Abios{" "}
+              <b
+                style={{
+                  color: externalStatus.providers.abios.configured
+                    ? "#34d399"
+                    : "#f87171",
+                }}
+              >
+                {externalStatus.providers.abios.configured ? "ON" : "OFF"}
+              </b>
+            </div>
+          )}
+        </div>
+
+        {/* Mode tabs */}
+        <div className="fade-up mb-4 flex gap-2">
+          {[
+            ["players", "Tuyển thủ"],
+            ["teams", "Đội tuyển"],
+          ].map(([k, label]) => (
+            <button
+              key={k}
+              onClick={() => {
+                setMode(k);
+                setP1("");
+                setP2("");
+                setResult([]);
+                setTs1([]);
+                setTs2([]);
+                setError("");
+              }}
+              className="px-4 py-2 rounded-xl text-xs font-black uppercase tracking-widest border transition-all"
+              style={{
+                background:
+                  mode === k ? "rgba(167,139,250,.12)" : "rgba(0,0,0,.15)",
+                border:
+                  mode === k
+                    ? "1px solid rgba(167,139,250,.35)"
+                    : "1px solid rgba(148,163,184,.15)",
+                color: mode === k ? "#a78bfa" : "rgba(148,163,184,.7)",
+                fontFamily: "'Orbitron',monospace",
+                fontSize: "0.68rem",
+              }}
+            >
+              {label}
+            </button>
+          ))}
         </div>
         <div
           className="fade-up rounded-2xl p-5 mb-6"
@@ -141,9 +299,14 @@ const ComparePlayers = () => {
                   }}
                 >
                   <option value="">-- Chọn --</option>
-                  {players.map((p) => (
-                    <option key={p.PlayerID} value={p.PlayerID}>
-                      {p.Nickname} · {p.Position}
+                  {(mode === "players" ? players : teams).map((x) => (
+                    <option
+                      key={mode === "players" ? x.PlayerID : x.TeamID}
+                      value={mode === "players" ? x.PlayerID : x.TeamID}
+                    >
+                      {mode === "players"
+                        ? `${x.Nickname} · ${x.Position}`
+                        : `${x.ShortName || x.TeamID} — ${x.TeamName}`}
                     </option>
                   ))}
                 </select>
@@ -151,7 +314,7 @@ const ComparePlayers = () => {
             ))}
           </div>
           <button
-            onClick={handleCompare}
+            onClick={mode === "players" ? handleCompare : handleCompareTeams}
             disabled={loading || !p1 || !p2}
             className="w-full py-2.5 rounded-xl text-sm font-black uppercase tracking-widest text-white disabled:opacity-40 transition-all hover:scale-[1.01]"
             style={{
@@ -176,7 +339,7 @@ const ComparePlayers = () => {
             ⚠️ {error}
           </div>
         )}
-        {result.length === 2 && (
+        {result.length > 0 && (
           <div
             className="fade-up rounded-2xl overflow-hidden"
             style={{
@@ -192,7 +355,9 @@ const ComparePlayers = () => {
                 className="font-black text-sm"
                 style={{ color: "#38bdf8", fontFamily: "'Orbitron',monospace" }}
               >
-                {p1info.Nickname || p1}
+                {mode === "players"
+                  ? p1info.Nickname || p1
+                  : p1info.ShortName || p1info.TeamName || p1}
               </div>
               <div
                 className="text-xs font-bold uppercase tracking-widest self-center"
@@ -204,9 +369,156 @@ const ComparePlayers = () => {
                 className="font-black text-sm"
                 style={{ color: "#f87171", fontFamily: "'Orbitron',monospace" }}
               >
-                {p2info.Nickname || p2}
+                {mode === "players"
+                  ? p2info.Nickname || p2
+                  : p2info.ShortName || p2info.TeamName || p2}
               </div>
             </div>
+            <div className="p-5 grid md:grid-cols-2 gap-5">
+              {/* Radar chart */}
+              <div
+                className="rounded-2xl p-4"
+                style={{ border: "1px solid rgba(167,139,250,.12)" }}
+              >
+                <div
+                  className="text-xs font-black uppercase tracking-widest mb-3"
+                  style={{ color: "rgba(148,163,184,.55)" }}
+                >
+                  Radar — Snapshot
+                </div>
+                <Radar
+                  data={{
+                    labels: METRICS.map((m) => m.label),
+                    datasets: [
+                      {
+                        label:
+                          mode === "players"
+                            ? p1info.Nickname || p1
+                            : p1info.ShortName || p1,
+                        data: METRICS.map((m) => Number(d1[m.key] || 0)),
+                        borderColor: "rgba(56,189,248,.9)",
+                        backgroundColor: "rgba(56,189,248,.12)",
+                        pointBackgroundColor: "rgba(56,189,248,.9)",
+                      },
+                      {
+                        label:
+                          mode === "players"
+                            ? p2info.Nickname || p2
+                            : p2info.ShortName || p2,
+                        data: METRICS.map((m) => Number(d2[m.key] || 0)),
+                        borderColor: "rgba(248,113,113,.9)",
+                        backgroundColor: "rgba(248,113,113,.12)",
+                        pointBackgroundColor: "rgba(248,113,113,.9)",
+                      },
+                    ],
+                  }}
+                  options={{
+                    responsive: true,
+                    plugins: {
+                      legend: { labels: { color: "rgba(226,232,240,.85)" } },
+                    },
+                    scales: {
+                      r: {
+                        angleLines: { color: "rgba(148,163,184,.12)" },
+                        grid: { color: "rgba(148,163,184,.10)" },
+                        pointLabels: { color: "rgba(226,232,240,.75)" },
+                        ticks: {
+                          color: "rgba(148,163,184,.55)",
+                          backdropColor: "transparent",
+                        },
+                      },
+                    },
+                  }}
+                />
+              </div>
+
+              {/* Trend chart (players only) */}
+              <div
+                className="rounded-2xl p-4"
+                style={{ border: "1px solid rgba(167,139,250,.12)" }}
+              >
+                <div className="flex items-center justify-between mb-3">
+                  <div
+                    className="text-xs font-black uppercase tracking-widest"
+                    style={{ color: "rgba(148,163,184,.55)" }}
+                  >
+                    Line — Trend (10 trận gần nhất)
+                  </div>
+                  <select
+                    value={trendMetric}
+                    onChange={(e) => setTrendMetric(e.target.value)}
+                    className="text-xs font-bold rounded-lg px-3 py-2 outline-none"
+                    style={{
+                      background: "rgba(0,0,0,.25)",
+                      border: "1px solid rgba(148,163,184,.15)",
+                      color: "rgba(226,232,240,.9)",
+                      fontFamily: "'Orbitron',monospace",
+                    }}
+                    disabled={mode !== "players"}
+                  >
+                    <option value="gold">Gold</option>
+                    <option value="kda">KDA</option>
+                  </select>
+                </div>
+
+                {mode !== "players" ? (
+                  <div
+                    className="text-sm py-10 text-center"
+                    style={{ color: "rgba(148,163,184,.5)" }}
+                  >
+                    Trend chart hiện hỗ trợ cho tuyển thủ (player timeseries).
+                  </div>
+                ) : (
+                  <Line
+                    data={{
+                      labels: (ts1.length ? ts1 : ts2).map((x) =>
+                        x.match_date
+                          ? new Date(x.match_date).toLocaleDateString("vi-VN")
+                          : x.match_id || "",
+                      ),
+                      datasets: [
+                        {
+                          label: p1info.Nickname || p1,
+                          data: ts1.map((x) =>
+                            trendMetric === "gold" ? x.gold : x.kda,
+                          ),
+                          borderColor: "rgba(56,189,248,.9)",
+                          backgroundColor: "rgba(56,189,248,.12)",
+                          tension: 0.35,
+                        },
+                        {
+                          label: p2info.Nickname || p2,
+                          data: ts2.map((x) =>
+                            trendMetric === "gold" ? x.gold : x.kda,
+                          ),
+                          borderColor: "rgba(248,113,113,.9)",
+                          backgroundColor: "rgba(248,113,113,.12)",
+                          tension: 0.35,
+                        },
+                      ],
+                    }}
+                    options={{
+                      responsive: true,
+                      plugins: {
+                        legend: { labels: { color: "rgba(226,232,240,.85)" } },
+                      },
+                      scales: {
+                        x: {
+                          ticks: { color: "rgba(148,163,184,.6)" },
+                          grid: { color: "rgba(148,163,184,.10)" },
+                        },
+                        y: {
+                          ticks: { color: "rgba(148,163,184,.6)" },
+                          grid: { color: "rgba(148,163,184,.10)" },
+                        },
+                      },
+                    }}
+                  />
+                )}
+              </div>
+            </div>
+
+            {/* Numbers (kept) */}
             <div>
               {METRICS.map((m) => {
                 const v1 = d1[m.key] || 0,
@@ -217,7 +529,7 @@ const ComparePlayers = () => {
                   <div
                     key={m.key}
                     className="grid grid-cols-3 items-center px-5 py-4 gap-4"
-                    style={{ borderBottom: "1px solid rgba(167,139,250,.05)" }}
+                    style={{ borderTop: "1px solid rgba(167,139,250,.05)" }}
                   >
                     <div className="flex items-center justify-end gap-2">
                       <span
@@ -227,7 +539,7 @@ const ComparePlayers = () => {
                           fontFamily: "'Orbitron',monospace",
                         }}
                       >
-                        {v1.toFixed(1)}
+                        {Number(v1).toFixed(1)}
                         {b === 1 ? " ✓" : ""}
                       </span>
                       <div
@@ -270,7 +582,7 @@ const ComparePlayers = () => {
                         }}
                       >
                         {b === 2 ? "✓ " : ""}
-                        {v2.toFixed(1)}
+                        {Number(v2).toFixed(1)}
                       </span>
                     </div>
                   </div>

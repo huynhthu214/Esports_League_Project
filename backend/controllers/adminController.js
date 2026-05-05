@@ -76,6 +76,118 @@ const getPlayers = async (req, res) => {
   }
 };
 
+// GET /api/admin/players/all (ADMIN) — trả cả IsActive=0
+const getAllPlayers = async (req, res) => {
+  try {
+    const result = await getPool()
+      .request()
+      .query(
+        `SELECT PlayerID, Nickname, FullName, Position, IsActive
+       FROM Players ORDER BY Nickname`,
+      );
+    res.json({ data: result.recordset });
+  } catch (err) {
+    console.error("getAllPlayers:", err.message);
+    res.status(500).json({ message: "Lỗi khi lấy tất cả tuyển thủ." });
+  }
+};
+
+// GET /api/admin/players/next-id (ADMIN)
+const getNextPlayerId = async (req, res) => {
+  try {
+    const result = await getPool().request().query(`
+      SELECT MAX(TRY_CONVERT(INT, SUBSTRING(PlayerID, 2, 10))) AS MaxNum
+      FROM Players
+      WHERE PlayerID LIKE 'P%';
+    `);
+    const maxNum = result.recordset?.[0]?.MaxNum || 0;
+    const nextNum = maxNum + 1;
+    const nextId = `P${String(nextNum).padStart(3, "0")}`;
+    res.json({ nextId });
+  } catch (err) {
+    console.error("getNextPlayerId:", err.message);
+    res.status(500).json({ message: "Lỗi khi sinh PlayerID." });
+  }
+};
+
+// POST /api/admin/players (ADMIN)
+// Body: { playerId?, nickname, fullName?, position }
+const createPlayer = async (req, res) => {
+  const { playerId, nickname, fullName = null, position } = req.body || {};
+  if (!nickname || !position) {
+    return res.status(400).json({ message: "Thiếu nickname hoặc position." });
+  }
+  const safeNick = String(nickname).trim();
+  const safePos = String(position).trim();
+  const safeFull = fullName != null ? String(fullName).trim() : null;
+
+  if (!safeNick)
+    return res.status(400).json({ message: "Nickname không hợp lệ." });
+  if (!safePos)
+    return res.status(400).json({ message: "Position không hợp lệ." });
+
+  try {
+    const pool = getPool();
+
+    // Determine final PlayerID (auto if missing)
+    let finalId = playerId ? String(playerId).trim() : "";
+    if (!finalId) {
+      const rMax = await pool.request().query(`
+        SELECT MAX(TRY_CONVERT(INT, SUBSTRING(PlayerID, 2, 10))) AS MaxNum
+        FROM Players
+        WHERE PlayerID LIKE 'P%';
+      `);
+      const maxNum = rMax.recordset?.[0]?.MaxNum || 0;
+      finalId = `P${String(maxNum + 1).padStart(3, "0")}`;
+    }
+
+    // Validate duplicates
+    const dup = await pool
+      .request()
+      .input("pid", sql.VarChar(10), finalId)
+      .input("nick", sql.NVarChar(100), safeNick)
+      .query(
+        `SELECT
+           SUM(CASE WHEN PlayerID = @pid THEN 1 ELSE 0 END) AS DupId,
+           SUM(CASE WHEN LOWER(Nickname) = LOWER(@nick) THEN 1 ELSE 0 END) AS DupNick
+         FROM Players`,
+      );
+    const row = dup.recordset?.[0] || { DupId: 0, DupNick: 0 };
+    if (row.DupId > 0)
+      return res
+        .status(409)
+        .json({ message: `PlayerID "${finalId}" đã tồn tại.` });
+    if (row.DupNick > 0)
+      return res
+        .status(409)
+        .json({ message: `Nickname "${safeNick}" đã tồn tại.` });
+
+    await pool
+      .request()
+      .input("pid", sql.VarChar(10), finalId)
+      .input("nick", sql.NVarChar(100), safeNick)
+      .input("full", sql.NVarChar(100), safeFull)
+      .input("pos", sql.VarChar(20), safePos).query(`
+        INSERT INTO Players (PlayerID, Nickname, FullName, Position, IsActive)
+        VALUES (@pid, @nick, @full, @pos, 1);
+      `);
+
+    res.status(201).json({
+      message: "Tạo tuyển thủ mới thành công.",
+      data: {
+        PlayerID: finalId,
+        Nickname: safeNick,
+        FullName: safeFull,
+        Position: safePos,
+        IsActive: 1,
+      },
+    });
+  } catch (err) {
+    console.error("createPlayer:", err.message);
+    res.status(500).json({ message: "Lỗi server khi tạo tuyển thủ." });
+  }
+};
+
 // ================================================================
 // TẠO MÙA GIẢI
 // POST /api/seasons
@@ -363,6 +475,84 @@ const getTeamRoster = async (req, res) => {
 };
 
 // ================================================================
+// CONTEXT ROSTER THEO TUYỂN THỦ (ADMIN)
+// GET /api/admin/rosters/player/:playerId?seasonId=SS2025
+// Trả về 1 dòng ưu tiên ACTIVE (nếu có)
+// ================================================================
+const getPlayerRosterContext = async (req, res) => {
+  const { playerId } = req.params;
+  const { seasonId } = req.query;
+
+  if (!playerId || !seasonId) {
+    return res.status(400).json({ message: "Thiếu playerId hoặc seasonId." });
+  }
+
+  try {
+    const result = await getPool()
+      .request()
+      .input("pid", sql.VarChar(10), playerId)
+      .input("sid", sql.VarChar(10), seasonId).query(`
+        SELECT TOP 1
+          r.PlayerID,
+          p.Nickname,
+          p.Position,
+          r.TeamID,
+          t.TeamName,
+          r.SeasonID,
+          r.Status,
+          v.AvgKDA,
+          v.AvgGPM,
+          v.WinRate,
+          v.TotalMatches
+        FROM Rosters r
+        JOIN Players p ON p.PlayerID = r.PlayerID
+        JOIN Teams   t ON t.TeamID   = r.TeamID
+        LEFT JOIN vw_Leaderboard_KDA v
+          ON v.PlayerID = r.PlayerID AND v.SeasonID = r.SeasonID
+        WHERE r.PlayerID = @pid AND r.SeasonID = @sid
+        ORDER BY CASE WHEN r.Status = 'ACTIVE' THEN 0 ELSE 1 END, r.JoinDate DESC
+      `);
+
+    if (result.recordset.length === 0) return res.json({ data: null });
+    res.json({ data: result.recordset[0] });
+  } catch (err) {
+    console.error("getPlayerRosterContext:", err.message);
+    res.status(500).json({ message: "Lỗi khi lấy context tuyển thủ." });
+  }
+};
+
+// ================================================================
+// DROPDOWN: TUYỂN THỦ ĐANG CÓ ROSTER ACTIVE TRONG MÙA (ADMIN)
+// GET /api/admin/rosters/players?seasonId=SS2025
+// ================================================================
+const getRosterPlayersBySeason = async (req, res) => {
+  const { seasonId } = req.query;
+  if (!seasonId) return res.status(400).json({ message: "Thiếu seasonId." });
+
+  try {
+    const result = await getPool()
+      .request()
+      .input("sid", sql.VarChar(10), seasonId).query(`
+        SELECT
+          r.PlayerID,
+          p.Nickname,
+          p.Position,
+          r.TeamID,
+          t.TeamName
+        FROM Rosters r
+        JOIN Players p ON p.PlayerID = r.PlayerID
+        JOIN Teams   t ON t.TeamID   = r.TeamID
+        WHERE r.SeasonID = @sid AND r.Status = 'ACTIVE'
+        ORDER BY t.TeamName, p.Position, p.Nickname
+      `);
+    res.json({ data: result.recordset });
+  } catch (err) {
+    console.error("getRosterPlayersBySeason:", err.message);
+    res.status(500).json({ message: "Lỗi khi lấy danh sách roster players." });
+  }
+};
+
+// ================================================================
 // LỊCH SỬ CHUYỂN NHƯỢNG
 // GET /api/transfers?playerId=P003&seasonId=SS2025
 // ================================================================
@@ -434,9 +624,11 @@ const removeFromRoster = async (req, res) => {
       `);
 
     if (check.recordset.length === 0) {
-      return res
-        .status(404)
-        .json({ message: "Tuyển thủ không thuộc đội này hoặc không ACTIVE." });
+      return res.status(404).json({
+        message:
+          "Tuyển thủ không thuộc đội này hoặc không ACTIVE (có thể đã TRANSFERRED_OUT hoặc sai mùa/đội).",
+        debug: { playerId, teamId, seasonId },
+      });
     }
 
     // Cập nhật status → TRANSFERRED_OUT
@@ -450,7 +642,10 @@ const removeFromRoster = async (req, res) => {
         WHERE PlayerID = @pid AND TeamID = @tid AND SeasonID = @sid AND Status = 'ACTIVE'
       `);
 
-    res.json({ message: "Đã xóa tuyển thủ khỏi đội thành công." });
+    res.json({
+      message: "Đã xóa tuyển thủ khỏi đội thành công.",
+      debug: { playerId, teamId, seasonId },
+    });
   } catch (err) {
     console.error("removeFromRoster:", err.message);
     res.status(500).json({ message: "Lỗi server khi xóa thành viên." });
@@ -665,10 +860,41 @@ const registerSeasonTeams = async (req, res) => {
   }
 };
 
+const getAvailablePlayers = async (req, res) => {
+  const { seasonId, teamId } = req.query;
+  if (!seasonId || !teamId)
+    return res.status(400).json({ message: "Thiếu seasonId hoặc teamId." });
+
+  try {
+    const result = await getPool()
+      .request()
+      .input("sid", sql.VarChar(10), seasonId)
+      .input("tid", sql.VarChar(10), teamId).query(`
+        SELECT p.PlayerID, p.Nickname, p.Position, p.IsActive,
+               t.ShortName AS CurrentTeam
+        FROM Players p
+        LEFT JOIN Rosters r 
+          ON r.PlayerID = p.PlayerID 
+          AND r.SeasonID = @sid 
+          AND r.Status = 'ACTIVE'
+        LEFT JOIN Teams t ON t.TeamID = r.TeamID
+        WHERE p.IsActive = 1
+          AND r.PlayerID IS NULL  -- chưa có roster trong mùa này (bất kỳ đội nào)
+        ORDER BY p.Position, p.Nickname
+      `);
+    res.json({ data: result.recordset });
+  } catch (err) {
+    res.status(500).json({ message: err.message });
+  }
+};
+
 module.exports = {
   getSeasons,
   getTeams,
   getPlayers,
+  getAllPlayers,
+  getNextPlayerId,
+  createPlayer,
   createSeason,
   registerRoster,
   transferPlayer,
@@ -682,4 +908,7 @@ module.exports = {
   getPlayerProfile,
   getSeasonTeams,
   registerSeasonTeams,
+  getAvailablePlayers,
+  getPlayerRosterContext,
+  getRosterPlayersBySeason,
 };

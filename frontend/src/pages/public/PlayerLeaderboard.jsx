@@ -1,6 +1,8 @@
 import { useState, useEffect, useCallback } from "react";
 import axiosClient from "../../api/axiosClient";
 
+/* eslint-disable react-hooks/set-state-in-effect */
+
 const POSITIONS = ["", "Top", "Jungle", "Mid", "ADC", "Support"];
 
 const POSITION_COLOR = {

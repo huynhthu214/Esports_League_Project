@@ -1,57 +1,176 @@
-import { useState, useEffect } from "react";
+import { useState, useEffect, useCallback } from "react";
 import axiosClient from "../../api/axiosClient";
 
+const sel = "ui-select";
+
 const TransferForm = () => {
-  const [players, setPlayers] = useState([]);
-  const [teams, setTeams] = useState([]);
   const [seasons, setSeasons] = useState([]);
+  const [seasonId, setSeasonId] = useState("");
+  const [teamRosterPlayers, setTeamRosterPlayers] = useState([]); // player ACTIVE trong đội+mùa (lọc giống rosterform)
+  const [seasonTeams, setSeasonTeams] = useState([]); // đội trong mùa
+  const [playerCtx, setPlayerCtx] = useState(null); // context panel
+  const [loadingCtx, setLoadingCtx] = useState(false);
+  const [loadingTeams, setLoadingTeams] = useState(false);
+  const [loadingPlayers, setLoadingPlayers] = useState(false);
+  const [loadError, setLoadError] = useState("");
+
   const [form, setForm] = useState({
     playerId: "",
     fromTeamId: "",
     toTeamId: "",
-    seasonId: "",
     transferFee: "",
     reason: "",
     approvedBy: "",
   });
-  const [result, setResult] = useState(null); // { type: 'COMMIT'|'ROLLBACK', message, data }
+  const [result, setResult] = useState(null);
   const [loading, setLoading] = useState(false);
 
-  useEffect(() => {
-    // Call API thật:
-    axiosClient
-      .get("/admin/players")
-      .then((r) => setPlayers(r.data.data || []))
-      .catch(() => {});
-    axiosClient
-      .get("/admin/teams")
-      .then((r) => setTeams(r.data.data || []))
-      .catch(() => {});
+  // ── BƯỚC 1: Mùa giải ─────────────────────────────────────────────
+  const fetchSeasons = useCallback(() => {
     axiosClient
       .get("/admin/seasons")
-      .then((r) => setSeasons(r.data.data || []))
+      .then((r) => {
+        const list = r.data?.data || [];
+        setSeasons(list);
+        const active = list.find((s) => s.Status === "ACTIVE") || list[0];
+        if (active) setSeasonId(active.SeasonID);
+      })
       .catch(() => {});
   }, []);
+  useEffect(() => {
+    fetchSeasons();
+  }, [fetchSeasons]);
 
-  const handleChange = (e) =>
-    setForm({ ...form, [e.target.name]: e.target.value });
+  // ── BƯỚC 2: Khi seasonId đổi → load đội thuộc mùa ────────────────
+  const fetchSeasonTeams = useCallback(() => {
+    if (!seasonId) {
+      setSeasonTeams([]);
+      setForm((f) => ({ ...f, playerId: "", fromTeamId: "", toTeamId: "" }));
+      setTeamRosterPlayers([]);
+      setPlayerCtx(null);
+      return;
+    }
+    setLoadError("");
+    setLoadingTeams(true);
+    setForm((f) => ({ ...f, playerId: "", fromTeamId: "", toTeamId: "" }));
+    setTeamRosterPlayers([]);
+    setPlayerCtx(null);
+    axiosClient
+      .get("/admin/season-teams", { params: { seasonId } })
+      .then((r) => setSeasonTeams(r.data?.data || []))
+      .catch((e) => {
+        setSeasonTeams([]);
+        setLoadError(
+          e.response?.data?.message || "Không tải được danh sách đội theo mùa.",
+        );
+      })
+      .finally(() => setLoadingTeams(false));
+  }, [seasonId]);
+  useEffect(() => {
+    fetchSeasonTeams();
+  }, [fetchSeasonTeams]);
 
-  const handleSubmit = async (e) => {
-    e.preventDefault();
+  // ── BƯỚC 3: Khi chọn đội nguồn (fromTeamId) → load roster ACTIVE ──
+  const fetchTeamRosterPlayers = useCallback(() => {
+    if (!seasonId || !form.fromTeamId) {
+      setTeamRosterPlayers([]);
+      setForm((f) => ({ ...f, playerId: "" }));
+      setPlayerCtx(null);
+      return;
+    }
+    setLoadError("");
+    setLoadingPlayers(true);
+    setTeamRosterPlayers([]);
+    setForm((f) => ({ ...f, playerId: "" }));
+    setPlayerCtx(null);
+
+    axiosClient
+      .get(`/admin/rosters/${form.fromTeamId}`, { params: { seasonId } })
+      .then((r) => {
+        const rows = r.data?.data || [];
+        const active = rows.filter((x) => x.Status === "ACTIVE");
+        setTeamRosterPlayers(active);
+      })
+      .catch(async (e) => {
+        // Fallback: nếu API rosters/team lỗi vì lý do nào đó, vẫn cho admin chọn player theo danh sách Players
+        setLoadError(
+          e.response?.data?.message ||
+            "Không tải được roster của đội. Bạn vẫn có thể chọn thủ công nhưng dễ sai dữ liệu.",
+        );
+        try {
+          const r2 = await axiosClient.get("/admin/players");
+          setTeamRosterPlayers(
+            (r2.data?.data || []).map((p) => ({
+              PlayerID: p.PlayerID,
+              Nickname: p.Nickname,
+              Position: p.Position,
+              Status: "UNKNOWN",
+            })),
+          );
+        } catch {
+          setTeamRosterPlayers([]);
+        }
+      })
+      .finally(() => setLoadingPlayers(false));
+  }, [seasonId, form.fromTeamId]);
+  useEffect(() => {
+    fetchTeamRosterPlayers();
+  }, [fetchTeamRosterPlayers]);
+
+  // ── BƯỚC 3: Khi chọn player → fetch context (đội hiện tại, stats) ─
+  const fetchPlayerContext = useCallback(() => {
+    if (!form.playerId || !seasonId) {
+      setPlayerCtx(null);
+      return;
+    }
+    setLoadingCtx(true);
+    axiosClient
+      .get(`/admin/rosters/player/${form.playerId}`, { params: { seasonId } })
+      .then((r) => {
+        const row = r.data?.data || null;
+        setPlayerCtx(row);
+        // Chỉ auto-fill fromTeamId nếu user chưa chọn đội nguồn
+        setForm((f) => ({
+          ...f,
+          fromTeamId: f.fromTeamId || row?.TeamID || "",
+        }));
+      })
+      .catch(() => setPlayerCtx(null))
+      .finally(() => setLoadingCtx(false));
+  }, [form.playerId, seasonId]);
+
+  // Gọi context khi playerId thay đổi — dùng useEffect độc lập
+  useEffect(() => {
+    fetchPlayerContext();
+  }, [form.playerId, seasonId]); // eslint-disable-line
+
+  const handleChange = (e) => {
+    const { name, value } = e.target;
+    setForm((f) => ({
+      ...f,
+      [name]: value,
+      ...(name === "fromTeamId"
+        ? { toTeamId: "", playerId: "" }
+        : name === "playerId"
+          ? {}
+          : null),
+    }));
+    if (name === "playerId") setPlayerCtx(null);
+  };
+
+  const handleSubmit = async () => {
     setResult(null);
     setLoading(true);
     try {
-      // Call API thật
-      const res = await axiosClient.post("/transfers", {
+      const res = await axiosClient.post("/admin/transfers", {
         playerId: form.playerId,
         fromTeamId: form.fromTeamId,
         toTeamId: form.toTeamId,
-        seasonId: form.seasonId,
+        seasonId,
         transferFee: form.transferFee ? parseFloat(form.transferFee) : 0,
         reason: form.reason || null,
         approvedBy: form.approvedBy || null,
       });
-
       setResult({
         type: "COMMIT",
         message: res.data.message,
@@ -61,11 +180,11 @@ const TransferForm = () => {
         playerId: "",
         fromTeamId: "",
         toTeamId: "",
-        seasonId: "",
         transferFee: "",
         reason: "",
         approvedBy: "",
       });
+      setPlayerCtx(null);
     } catch (err) {
       const data = err.response?.data;
       setResult({
@@ -78,19 +197,30 @@ const TransferForm = () => {
     }
   };
 
+  const selectedSeason = seasons.find((s) => s.SeasonID === seasonId);
+  // Đội đích = đội trong mùa, trừ đội nguồn
+  const toTeams = seasonTeams.filter((t) => t.TeamID !== form.fromTeamId);
+
   return (
-    <div className="min-h-[calc(100vh-80px)] h-full flex-1 w-full bg-[#0b1120] text-slate-200 p-8 font-sans">
+    <div className="min-h-[calc(100vh-80px)] w-full bg-[#0b1120] text-slate-200 p-8 font-sans">
       <div className="max-w-4xl mx-auto">
-        <h1 className="text-3xl font-black italic tracking-wider text-transparent bg-clip-text bg-gradient-to-r from-orange-400 to-red-500 uppercase mb-2">
+        <h1 className="text-3xl font-black italic tracking-wider text-transparent bg-clip-text bg-gradient-to-r from-orange-400 to-red-500 uppercase mb-1">
           🔄 Chuyển Nhượng Tuyển Thủ
         </h1>
-        <p className="text-sm font-bold text-orange-500/80 mb-8 uppercase tracking-widest bg-orange-500/10 inline-block px-3 py-1 rounded border border-orange-500/20 shadow-[0_0_10px_rgba(249,115,22,0.2)]">
-          ATOMIC TRANSACTION: BẮT BUỘC TOÀN VẸN DỮ LIỆU
+        <p className="text-sm font-bold text-orange-500/80 mb-8 uppercase tracking-widest bg-orange-500/10 inline-block px-3 py-1 rounded border border-orange-500/20">
+          ATOMIC TRANSACTION · BẮT BUỘC TOÀN VẸN DỮ LIỆU
         </p>
 
+        {loadError && (
+          <div className="mb-6 p-4 border rounded-xl text-sm font-medium bg-amber-900/10 border-amber-500/20 text-amber-300">
+            ⚠️ {loadError}
+          </div>
+        )}
+
+        {/* ── Kết quả transaction ── */}
         {result && (
           <div
-            className={`mb-8 p-6 rounded-2xl border-2 backdrop-blur-md shadow-2xl ${result.type === "COMMIT" ? "bg-emerald-900/20 border-emerald-500/50 shadow-emerald-500/20" : "bg-red-900/20 border-red-500/50 shadow-red-500/20"}`}
+            className={`mb-8 p-6 rounded-2xl border-2 ${result.type === "COMMIT" ? "bg-emerald-900/20 border-emerald-500/50" : "bg-red-900/20 border-red-500/50"}`}
           >
             <h3
               className={`text-xl font-black uppercase tracking-wider mb-2 ${result.type === "COMMIT" ? "text-emerald-400" : "text-red-400"}`}
@@ -140,66 +270,197 @@ const TransferForm = () => {
           </div>
         )}
 
-        <form
-          onSubmit={handleSubmit}
-          className="bg-slate-900/60 backdrop-blur-xl p-8 rounded-2xl border border-slate-800 shadow-lg flex flex-col gap-6"
-        >
+        <div className="bg-slate-900/60 backdrop-blur-xl p-8 rounded-2xl border border-slate-800 shadow-lg flex flex-col gap-6">
+          {/* ── Mùa giải (smart default) ── */}
           <div>
             <label className="block text-xs font-bold text-slate-500 uppercase tracking-widest mb-2">
-              Tuyển thủ giao dịch
+              Bước 1 — Mùa giải
+            </label>
+            <select
+              value={seasonId}
+              onChange={(e) => setSeasonId(e.target.value)}
+              required
+              className={sel.replace("orange", "orange")}
+            >
+              <option value="">-- Chọn mùa --</option>
+              {seasons.map((s) => (
+                <option key={s.SeasonID} value={s.SeasonID}>
+                  {s.SeasonName} [{s.Status}]
+                </option>
+              ))}
+            </select>
+          </div>
+
+          {/* ── Tuyển thủ (lọc theo mùa) ── */}
+          <div>
+            <label className="block text-xs font-bold text-slate-500 uppercase tracking-widest mb-2">
+              Bước 2 — Đội nguồn (rời đội)
+              {seasonId && !loadingTeams && (
+                <span className="ml-2 text-orange-400 normal-case font-normal">
+                  ({seasonTeams.length} đội trong {selectedSeason?.SeasonName})
+                </span>
+              )}
+            </label>
+            <select
+              name="fromTeamId"
+              value={form.fromTeamId}
+              onChange={handleChange}
+              required
+              disabled={!seasonId || loadingTeams}
+              className={sel}
+            >
+              <option value="">
+                {loadingTeams
+                  ? "Đang tải đội..."
+                  : seasonId
+                    ? "-- Chọn đội nguồn --"
+                    : "← Chọn mùa trước"}
+              </option>
+              {seasonTeams.map((t) => (
+                <option key={t.TeamID} value={t.TeamID}>
+                  {t.TeamName}
+                </option>
+              ))}
+            </select>
+          </div>
+
+          {/* ── Bước 3: Tuyển thủ thuộc đội nguồn ── */}
+          <div>
+            <label className="block text-xs font-bold text-slate-500 uppercase tracking-widest mb-2">
+              Bước 3 — Tuyển thủ (trong roster ACTIVE của đội nguồn)
+              {form.fromTeamId && !loadingPlayers && (
+                <span className="ml-2 text-orange-400 normal-case font-normal">
+                  ({teamRosterPlayers.length} người)
+                </span>
+              )}
             </label>
             <select
               name="playerId"
               value={form.playerId}
               onChange={handleChange}
               required
-              className="w-full bg-slate-950/80 border border-slate-700 text-orange-400 font-bold rounded-lg px-4 py-3 text-sm focus:outline-none focus:border-orange-500"
+              disabled={!seasonId || !form.fromTeamId || loadingPlayers}
+              className={sel}
+              style={{
+                color: form.playerId ? "#fb923c" : undefined,
+                fontWeight: form.playerId ? 700 : undefined,
+              }}
             >
-              <option value="">-- Chọn --</option>
-              {players.map((p) => (
+              <option value="">
+                {loadingPlayers
+                  ? "Đang tải roster..."
+                  : form.fromTeamId
+                    ? "-- Chọn tuyển thủ --"
+                    : "← Chọn đội nguồn trước"}
+              </option>
+              {teamRosterPlayers.map((p) => (
                 <option key={p.PlayerID} value={p.PlayerID}>
                   {p.Nickname} ({p.PlayerID}) — {p.Position}
                 </option>
               ))}
             </select>
+
+            {/* Context panel — hiện khi đã chọn player */}
+            {loadingCtx && (
+              <div className="mt-2 px-4 py-2 bg-slate-800/60 rounded-lg text-xs text-slate-500">
+                Đang tải thông tin tuyển thủ...
+              </div>
+            )}
+            {!loadingCtx && form.playerId && playerCtx && (
+              <div className="mt-2 flex items-center gap-4 px-4 py-3 bg-orange-900/10 border border-orange-500/20 rounded-xl">
+                <div className="w-8 h-8 rounded-lg bg-orange-500/20 flex items-center justify-center text-orange-400 font-black text-xs flex-shrink-0">
+                  {(playerCtx.Nickname || "?").slice(0, 2).toUpperCase()}
+                </div>
+                <div className="text-sm">
+                  <span className="font-bold text-white">
+                    {playerCtx.Nickname}
+                  </span>
+                  <span className="mx-2 text-slate-500">·</span>
+                  <span className="text-orange-400 font-semibold">
+                    {playerCtx.Position}
+                  </span>
+                  <span className="mx-2 text-slate-500">·</span>
+                  <span className="text-slate-400">Đang ở</span>
+                  <span className="ml-1 font-bold text-white">
+                    {playerCtx.TeamName || form.fromTeamId}
+                  </span>
+                </div>
+                {playerCtx.AvgKDA != null && (
+                  <div className="ml-auto text-right text-xs">
+                    <span className="text-cyan-400 font-bold">
+                      {Number(playerCtx.AvgKDA).toFixed(2)}
+                    </span>
+                    <span className="text-slate-600 ml-1">KDA</span>
+                  </div>
+                )}
+              </div>
+            )}
+            {!loadingCtx && form.playerId && !playerCtx && (
+              <div className="mt-2 px-4 py-2 bg-amber-900/10 border border-amber-500/20 rounded-lg text-xs text-amber-400">
+                ⚠️ Không lấy được context roster của tuyển thủ theo mùa — vui
+                lòng kiểm tra API hoặc thử reload backend.
+              </div>
+            )}
           </div>
 
+          {/* ── Từ đội → Đến đội ── */}
           <div className="grid sm:grid-cols-2 gap-6 relative">
-            <div className="absolute left-1/2 top-1/2 -translate-x-1/2 -translate-y-1/2 bg-slate-800 text-slate-400 w-10 h-10 rounded-full flex items-center justify-center border-4 border-slate-900 font-black italic z-10">
+            <div className="absolute left-1/2 top-1/2 -translate-x-1/2 -translate-y-1/2 bg-slate-800 text-slate-400 w-10 h-10 rounded-full flex items-center justify-center border-4 border-[#0b1120] font-black z-10 text-lg">
               ➝
             </div>
+
+            {/* Rời đội — đã chọn từ bước 2 */}
             <div className="bg-slate-950/50 p-4 rounded-xl border border-slate-800">
               <label className="block text-xs font-bold text-slate-500 uppercase tracking-widest mb-2">
-                Rời đội (Từ)
+                Rời đội (Từ) — đội nguồn
               </label>
               <select
                 name="fromTeamId"
                 value={form.fromTeamId}
                 onChange={handleChange}
                 required
-                className="w-full bg-slate-900 border border-slate-700 text-slate-400 rounded-lg px-4 py-3 text-sm focus:outline-none focus:border-slate-500"
+                disabled={!seasonId || loadingTeams}
+                className={sel}
               >
-                <option value="">-- Đội cũ --</option>
-                {teams.map((t) => (
+                <option value="">
+                  {loadingTeams
+                    ? "Đang tải..."
+                    : seasonId
+                      ? "-- Chọn đội nguồn --"
+                      : "← Chọn mùa"}
+                </option>
+                {seasonTeams.map((t) => (
                   <option key={t.TeamID} value={t.TeamID}>
                     {t.TeamName}
                   </option>
                 ))}
               </select>
             </div>
+
+            {/* Vào đội — loại trừ đội nguồn */}
             <div className="bg-orange-950/10 p-4 rounded-xl border border-orange-500/20">
               <label className="block text-xs font-bold text-orange-500 uppercase tracking-widest mb-2">
                 Vào đội (Đến)
+                {form.fromTeamId && (
+                  <span className="ml-2 text-slate-500 normal-case font-normal">
+                    ({toTeams.length} đội khả dụng)
+                  </span>
+                )}
               </label>
               <select
                 name="toTeamId"
                 value={form.toTeamId}
                 onChange={handleChange}
                 required
-                className="w-full bg-slate-900 border border-orange-700/50 text-slate-200 rounded-lg px-4 py-3 text-sm focus:outline-none focus:border-orange-500 shadow-[0_0_15px_rgba(249,115,22,0.1)]"
+                disabled={!form.fromTeamId || !form.playerId}
+                className={sel}
               >
-                <option value="">-- Đội mới --</option>
-                {teams.map((t) => (
+                <option value="">
+                  {form.fromTeamId && form.playerId
+                    ? "-- Chọn đội mới --"
+                    : "← Chọn đội nguồn + tuyển thủ trước"}
+                </option>
+                {toTeams.map((t) => (
                   <option key={t.TeamID} value={t.TeamID}>
                     {t.TeamName}
                   </option>
@@ -208,26 +469,8 @@ const TransferForm = () => {
             </div>
           </div>
 
-          <div className="grid sm:grid-cols-3 gap-6 mt-2">
-            <div>
-              <label className="block text-xs font-bold text-slate-500 uppercase tracking-widest mb-2">
-                Mùa giải
-              </label>
-              <select
-                name="seasonId"
-                value={form.seasonId}
-                onChange={handleChange}
-                required
-                className="w-full bg-slate-950/80 border border-slate-700 text-slate-200 rounded-lg px-4 py-3 text-sm focus:outline-none focus:border-orange-500"
-              >
-                <option value="">-- Chọn --</option>
-                {seasons.map((s) => (
-                  <option key={s.SeasonID} value={s.SeasonID}>
-                    {s.SeasonName}
-                  </option>
-                ))}
-              </select>
-            </div>
+          {/* ── Thông tin bổ sung ── */}
+          <div className="grid sm:grid-cols-3 gap-6">
             <div>
               <label className="block text-xs font-bold text-slate-500 uppercase tracking-widest mb-2">
                 Phí chuyển nhượng (VND)
@@ -239,6 +482,19 @@ const TransferForm = () => {
                 onChange={handleChange}
                 placeholder="0"
                 className="w-full bg-slate-950/80 border border-slate-700 text-amber-400 font-bold rounded-lg px-4 py-3 text-sm focus:outline-none focus:border-orange-500"
+              />
+            </div>
+            <div>
+              <label className="block text-xs font-bold text-slate-500 uppercase tracking-widest mb-2">
+                Lý do
+              </label>
+              <input
+                type="text"
+                name="reason"
+                value={form.reason}
+                onChange={handleChange}
+                placeholder="VD: Hợp đồng hết hạn"
+                className="w-full bg-slate-950/80 border border-slate-700 text-slate-300 rounded-lg px-4 py-3 text-sm focus:outline-none focus:border-orange-500"
               />
             </div>
             <div>
@@ -257,15 +513,22 @@ const TransferForm = () => {
           </div>
 
           <button
-            type="submit"
-            disabled={loading}
-            className="w-full bg-gradient-to-r from-orange-600 to-red-600 hover:from-orange-500 hover:to-red-500 text-white rounded-lg py-4 text-sm font-black tracking-widest uppercase shadow-[0_0_20px_rgba(239,68,68,0.5)] disabled:opacity-50 transition-all transform hover:scale-[1.01] mt-4"
+            type="button"
+            onClick={handleSubmit}
+            disabled={
+              loading ||
+              !form.playerId ||
+              !form.fromTeamId ||
+              !form.toTeamId ||
+              !seasonId
+            }
+            className="w-full bg-gradient-to-r from-orange-600 to-red-600 hover:from-orange-500 hover:to-red-500 text-white rounded-lg py-4 text-sm font-black tracking-widest uppercase disabled:opacity-40 disabled:cursor-not-allowed transition-all mt-2"
           >
             {loading
-              ? "⏳ Đang khóa bảng & xử lý..."
+              ? "⏳ Đang xử lý transaction..."
               : "THỰC THI CHUYỂN NHƯỢNG"}
           </button>
-        </form>
+        </div>
       </div>
     </div>
   );

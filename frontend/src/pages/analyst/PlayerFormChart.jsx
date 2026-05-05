@@ -1,4 +1,4 @@
-import { useState, useEffect, useRef } from "react";
+import { useState, useEffect } from "react";
 import axiosClient from "../../api/axiosClient";
 
 const STYLE = `
@@ -103,8 +103,6 @@ const RadarChart = ({ stats }) => {
   // Value label positions (right next to each dot)
   const valuePts = axes.map((_, i) => radarPoint(i, ratios[i], total, R + 10));
 
-  // Grid color
-  const gridColor = "rgba(56,189,248,0.12)";
   const gridStroke = "rgba(56,189,248,0.18)";
 
   return (
