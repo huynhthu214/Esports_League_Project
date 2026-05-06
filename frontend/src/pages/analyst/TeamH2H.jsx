@@ -95,8 +95,7 @@ const TeamH2H = () => {
           >
             🥊 Đối Đầu H2H
           </h1>
-          <p className="text-sm mt-1" style={{ color: "rgba(148,163,184,.6)" }}>
-            Lịch sử đối đầu trực tiếp giữa 2 đội.
+          <p className="text-sm mt-1" style={{ color: "rgba(148,163,184,.6)" }}>  
           </p>
         </div>
         <div

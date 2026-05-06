@@ -139,10 +139,8 @@ python sync_standings.py SS2025
 
 | Role | Username | Password |
 |------|----------|----------|
-| Admin | admin | 123456 |
-| Analyst | analyst1 | 123456 |
-| Fan | fan1 | 123456 |
-
+| Admin | admin | password|
+| Analyst | analyst1 | password |
 ---
 
 ## Quy trình Admin (thứ tự bắt buộc)
@@ -157,47 +155,3 @@ python sync_standings.py SS2025
 > ⚠️ Bỏ qua bước 2 → Trigger `trg_ValidateRosterTeamInSeason` sẽ block bước 3.
 
 ---
-
-## Cấu trúc thư mục
-
-```
-Esports_League_Project/
-├── backend/
-│   ├── controllers/
-│   │   ├── adminController.js      # CRUD entities, leaderboards
-│   │   ├── analyticsController.js  # MongoDB aggregation + dự đoán
-│   │   └── matchController.js      # Dual-write SQL + MongoDB
-│   ├── routes/
-│   └── server.js
-├── frontend/src/pages/
-│   ├── public/     # Fan: bảng xếp hạng, lịch thi đấu, chuyển nhượng
-│   ├── admin/      # Admin: quản lý mùa, roster, trận đấu
-│   └── analyst/    # Analyst: phân tích KDA, meta, dự đoán
-├── databases/
-│   ├── sql_database/    # .sql files (01-07)
-│   └── nosql_database/  # aggregation pipelines + schema
-├── integration_scripts/
-│   └── sync_standings.py
-└── AI_Audit_Log.md
-```
-
----
-
-## Execution Plan (Appendix)
-
-Để demo tối ưu hóa query, chạy trong SSMS:
-
-```sql
-SET STATISTICS IO ON;
-SET STATISTICS TIME ON;
-
--- Query phức tạp nhất: DENSE_RANK trên view
-SELECT * FROM vw_Leaderboard_KDA WHERE SeasonID = 'SS2025'
-ORDER BY KDA_Rank;
-
-SET STATISTICS IO OFF;
-SET STATISTICS TIME OFF;
-```
-
-Sau đó nhấn **Ctrl+M** (Include Actual Execution Plan) trước khi chạy để xem đồ thị.
-Chụp ảnh và đặt vào Appendix báo cáo PDF.

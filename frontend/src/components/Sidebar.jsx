@@ -23,7 +23,7 @@ const Sidebar = () => {
     }`;
 
   return (
-    <aside className="w-60 shrink-0 min-h-screen bg-slate-950/85 backdrop-blur-2xl border-r border-slate-800/80 p-4 flex flex-col gap-6 shadow-[6px_0_24px_rgba(0,0,0,0.40)] font-sans overflow-y-auto">
+    <aside className="w-60 shrink-0 h-full bg-slate-950/85 backdrop-blur-2xl border-r border-slate-800/80 p-4 flex flex-col gap-6 shadow-[6px_0_24px_rgba(0,0,0,0.40)] font-sans overflow-y-auto dark-scrollbar">
       {/* ── PUBLIC (Fan) ── */}
       <div>
         <SectionLabel label="Dành cho Fan" color="text-cyan-500/60" />

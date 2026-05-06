@@ -91,10 +91,6 @@ const SeasonReport = () => {
           >
             📋 Báo Cáo Mùa Giải
           </h1>
-          <p className="text-sm mt-1" style={{ color: "rgba(148,163,184,.6)" }}>
-            Tổng hợp số liệu SQL (standings, leaderboard) + MongoDB (trận đấu,
-            tướng).
-          </p>
         </div>
         <div className="fade-up flex gap-3 mb-6 flex-wrap items-center">
           <select

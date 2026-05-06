@@ -131,9 +131,6 @@ const TeamStandings = () => {
           >
             📊 Team Standings
           </h1>
-          <p className="text-sm mt-1" style={{ color: "rgba(148,163,184,.6)" }}>
-            Xếp hạng theo Wins → Win Rate → Goal Difference (DENSE_RANK)
-          </p>
         </div>
 
         {/* Season selector */}

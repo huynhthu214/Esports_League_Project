@@ -118,10 +118,6 @@ const TransferHistory = () => {
           >
             🔄 Lịch Sử Chuyển Nhượng
           </h1>
-          <p className="text-sm mt-1" style={{ color: "rgba(148,163,184,.6)" }}>
-            Các giao dịch chuyển nhượng tuyển thủ được thực hiện bằng Atomic SQL
-            Transaction.
-          </p>
         </div>
 
         {/* Season selector */}

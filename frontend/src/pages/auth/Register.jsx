@@ -88,10 +88,9 @@ const Register = () => {
               onChange={handleChange}
               className="w-full bg-slate-950/50 border border-slate-700 text-slate-200 rounded-lg px-4 py-2.5 text-sm focus:outline-none focus:border-cyan-500 focus:ring-1 focus:ring-cyan-500 transition-all appearance-none"
             >
-              <option value="FAN" className="bg-slate-900 text-slate-200">FAN — Người hâm mộ</option>
-              <option value="COACH" className="bg-slate-900 text-slate-200">COACH — Huấn luyện viên</option>
-              <option value="ANALYST" className="bg-slate-900 text-slate-200">ANALYST — Chuyên viên phân tích</option>
-              <option value="ADMIN" className="bg-slate-900 text-red-400 font-semibold">ADMIN — Ban tổ chức</option>
+              <option value="FAN" className="bg-slate-900 text-slate-200">FAN - Người hâm mộ</option>
+              <option value="ANALYST" className="bg-slate-900 text-slate-200">ANALYST - Chuyên viên phân tích</option>
+              <option value="ADMIN" className="bg-slate-900 text-red-400 font-semibold">ADMIN - Ban tổ chức</option>
             </select>
           </div>
           

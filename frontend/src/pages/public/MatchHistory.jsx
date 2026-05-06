@@ -108,9 +108,6 @@ const MatchHistory = () => {
           >
             ⚔️ Lịch Sử Trận Đấu
           </h1>
-          <p className="text-sm mt-1" style={{ color: "rgba(148,163,184,.6)" }}>
-            Kết quả các trận đấu đã hoàn thành.
-          </p>
         </div>
 
         {/* Season selector */}

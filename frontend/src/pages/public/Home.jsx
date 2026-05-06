@@ -339,7 +339,7 @@ const Home = () => {
                   className="text-sm leading-relaxed max-w-md mb-6"
                   style={{ color: "rgba(148,163,184,.8)" }}
                 >
-                  Hệ thống quản lý giải đấu chuyên nghiệp — theo dõi thống kê
+                  Hệ thống quản lý giải đấu chuyên nghiệp, theo dõi thống kê
                   trận đấu, phân tích phong độ tuyển thủ và bảng xếp hạng theo
                   thời gian thực.
                 </p>

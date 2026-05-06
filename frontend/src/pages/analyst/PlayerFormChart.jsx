@@ -487,14 +487,6 @@ const PlayerFormChart = () => {
               {loading ? <span className="spinner" /> : "Phân Tích"}
             </button>
           </div>
-          <p
-            className="text-xs mt-2"
-            style={{ color: "rgba(148,163,184,.35)" }}
-          >
-            Dữ liệu từ MongoDB{" "}
-            <code style={{ color: "#a78bfa" }}>match_stats</code> — cần nhập kết
-            quả trận trước.
-          </p>
         </div>
 
         {/* Error */}

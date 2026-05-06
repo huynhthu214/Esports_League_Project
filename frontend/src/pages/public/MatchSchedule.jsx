@@ -124,9 +124,6 @@ const MatchSchedule = () => {
           >
             📅 Lịch Thi Đấu
           </h1>
-          <p className="text-sm mt-1" style={{ color: "rgba(148,163,184,.6)" }}>
-            Các trận đấu sắp diễn ra trong mùa giải.
-          </p>
         </div>
 
         {/* Season selector */}

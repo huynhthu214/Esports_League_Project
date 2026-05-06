@@ -147,7 +147,7 @@ const RosterForm = () => {
                   : "bg-red-900/20 border-red-500/30 text-red-400"
             }`}
           >
-            {status.type === "trigger" && <strong>⚠️ Trigger vi phạm: </strong>}
+            {status.type === "trigger" && <strong></strong>}
             {status.message}
           </div>
         )}

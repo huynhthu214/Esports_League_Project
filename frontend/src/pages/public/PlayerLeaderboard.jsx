@@ -150,9 +150,6 @@ const PlayerLeaderboard = () => {
           >
             🏆 KDA Leaderboard
           </h1>
-          <p className="text-sm mt-1" style={{ color: "rgba(148,163,184,.6)" }}>
-            Tuyển thủ có tối thiểu 5 trận thi đấu mới được xếp hạng.
-          </p>
         </div>
 
         {/* Filters */}

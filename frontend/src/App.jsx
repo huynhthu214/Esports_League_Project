@@ -4,6 +4,7 @@ import { AuthProvider } from "./context/AuthContext";
 import ProtectedRoute from "./components/ProtectedRoute";
 import Navbar from "./components/Navbar";
 import Sidebar from "./components/Sidebar";
+import ScrollToTop from "./components/ScrollToTop";
 
 // Auth pages
 import Login from "./pages/auth/Login";
@@ -41,11 +42,11 @@ import PredictMatch from "./pages/analyst/PredictMatch";
 
 // Layout với Navbar + Sidebar
 const AppLayout = ({ children }) => (
-  <div className="min-h-screen bg-[#050c18] flex flex-col">
+  <div className="h-screen overflow-hidden bg-[#050c18] flex flex-col">
     <Navbar />
-    <div className="flex flex-1">
+    <div className="flex flex-1 overflow-hidden">
       <Sidebar />
-      <main className="flex-1 overflow-auto">{children}</main>
+      <main className="flex-1 overflow-y-auto dark-scrollbar">{children}</main>
     </div>
   </div>
 );
@@ -53,19 +54,18 @@ const AppLayout = ({ children }) => (
 function App() {
   return (
     <BrowserRouter>
+    <ScrollToTop />
       <AuthProvider>
         <Routes>
-          {/* Auth — không có sidebar */}
           <Route path="/login" element={<Login />} />
           <Route path="/register" element={<Register />} />
 
-          {/* Layout chung cho tất cả các trang khác */}
           <Route
             path="/*"
             element={
               <AppLayout>
                 <Routes>
-                  {/* ── PUBLIC ── */}
+                  {/* PUBLIC*/}
                   <Route index element={<Home />} />
                   <Route
                     path="leaderboard/players"
@@ -77,7 +77,7 @@ function App() {
                   <Route path="matches" element={<MatchHistory />} />
                   <Route path="matches/:matchId" element={<MatchDetail />} />
                   <Route path="transfers" element={<TransferHistory />} />
-                  {/* ── ADMIN ONLY ── */}
+                  {/* ADMIN ONLY */}
                   <Route
                     path="admin"
                     element={
@@ -146,7 +146,7 @@ function App() {
                     path="admin/season-teams"
                     element={<RegisterSeasonTeams />}
                   />
-                  {/* ── ANALYST / COACH / ADMIN ── */}
+                  {/* ANALYST / ADMIN */}
                   <Route
                     path="analyst"
                     element={

@@ -436,7 +436,7 @@ const AdminDashboard = () => {
                 fontSize: "0.7rem",
               }}
             >
-              {exporting ? <span className="spinner" /> : "📥"}
+              {exporting ? <span className="spinner" /> : ""}
               Export Excel
             </button>
           </div>

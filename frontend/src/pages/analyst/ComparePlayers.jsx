@@ -201,9 +201,6 @@ const ComparePlayers = () => {
           >
             ⚖️ So Kèo Trực Diện
           </h1>
-          <p className="text-sm mt-1" style={{ color: "rgba(148,163,184,.6)" }}>
-            Radar chart (snapshot) + Line chart (trend) từ match_stats.
-          </p>
           {externalStatus?.providers && (
             <div
               className="text-xs mt-2"
