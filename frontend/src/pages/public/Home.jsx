@@ -1,46 +1,14 @@
 import { Link } from "react-router-dom";
 import { useAuth } from "../../context/useAuth";
 import { useEffect, useRef, useState } from "react";
-
-// ── Mock data (thay bằng API call thực tế sau) ──────────────────────────────
-const MOCK_RECENT = [
-  {
-    team1: "NOVA",
-    team2: "STORM",
-    score: "2-1",
-    time: "18:30",
-    map: "Summoner's Rift",
-  },
-  {
-    team1: "VIPER",
-    team2: "APEX",
-    score: "2-0",
-    time: "16:00",
-    map: "Howling Abyss",
-  },
-  {
-    team1: "IRON",
-    team2: "TITAN",
-    score: "1-2",
-    time: "14:15",
-    map: "Summoner's Rift",
-  },
-];
-
-const MOCK_TOP = [
-  { rank: 1, name: "StarLord", team: "NOVA", kda: "8.42", role: "MID" },
-  { rank: 2, name: "Neomedeon", team: "VIPER", kda: "7.91", role: "ADC" },
-  { rank: 3, name: "JustVV", team: "STORM", kda: "7.35", role: "JGL" },
-  { rank: 4, name: "Clark89", team: "APEX", kda: "6.88", role: "TOP" },
-  { rank: 5, name: "AnchovyK", team: "TITAN", kda: "6.44", role: "SUP" },
-];
+import axiosClient from "../../api/axiosClient";
 
 const ROLE_COLOR = {
-  MID: "#a78bfa",
+  Top: "#fb923c",
+  Jungle: "#34d399",
+  Mid: "#a78bfa",
   ADC: "#f87171",
-  JGL: "#34d399",
-  TOP: "#fb923c",
-  SUP: "#38bdf8",
+  Support: "#38bdf8",
 };
 
 // ── Particle background ──────────────────────────────────────────────────────
@@ -94,6 +62,18 @@ function Particles() {
     />
   );
 }
+
+const fmtTime = (d) => {
+  if (!d) return "—";
+  try {
+    return new Date(d).toLocaleTimeString("vi-VN", {
+      hour: "2-digit",
+      minute: "2-digit",
+    });
+  } catch {
+    return "—";
+  }
+};
 
 // ── StatCard ─────────────────────────────────────────────────────────────────
 function StatCard({ icon, label, value, accent }) {
@@ -185,9 +165,65 @@ function QuickLink({ to, icon, title, desc, accent }) {
 const Home = () => {
   const { isLoggedIn, user } = useAuth();
   const [visible, setVisible] = useState(false);
+  const [loading, setLoading] = useState(true);
+  const [error, setError] = useState("");
+  const [season, setSeason] = useState(null);
+  const [counts, setCounts] = useState({
+    TotalTeams: 0,
+    TotalMatches: 0,
+    TotalPlayers: 0,
+    TotalTransfers: 0,
+  });
+  const [recentMatches, setRecentMatches] = useState([]);
+  const [topPlayers, setTopPlayers] = useState([]);
+
   useEffect(() => {
     const t = setTimeout(() => setVisible(true), 80);
     return () => clearTimeout(t);
+  }, []);
+
+  useEffect(() => {
+    let mounted = true;
+    setLoading(true);
+    setError("");
+
+    axiosClient
+      .get("/admin/seasons")
+      .then((r) => {
+        const list = r.data?.data || [];
+        const active = list.find((s) => s.Status === "ACTIVE") || list[0];
+        if (!active) throw new Error("Chưa có mùa giải.");
+        return axiosClient.get("/admin/dashboard", {
+          params: { seasonId: active.SeasonID },
+        });
+      })
+      .then((r) => {
+        if (!mounted) return;
+        setSeason(r.data?.season || null);
+        setCounts(r.data?.counts || {});
+        setRecentMatches(
+          Array.isArray(r.data?.recentMatches) ? r.data.recentMatches : [],
+        );
+        setTopPlayers(
+          Array.isArray(r.data?.topPlayers) ? r.data.topPlayers : [],
+        );
+      })
+      .catch((e) => {
+        if (!mounted) return;
+        setError(
+          e?.response?.data?.message ||
+            e?.message ||
+            "Không tải được dữ liệu trang chủ.",
+        );
+      })
+      .finally(() => {
+        if (!mounted) return;
+        setLoading(false);
+      });
+
+    return () => {
+      mounted = false;
+    };
   }, []);
 
   return (
@@ -275,7 +311,9 @@ const Home = () => {
                   }}
                 >
                   <span className="w-1.5 h-1.5 rounded-full bg-cyan-400 animate-pulse" />
-                  Season 2025 · LIVE
+                  {season?.SeasonName
+                    ? `${season.SeasonName} · ${season.Status}`
+                    : "Season · LIVE"}
                 </div>
                 <h1
                   className="text-4xl lg:text-5xl font-black uppercase leading-none mb-4 text-white"
@@ -335,25 +373,25 @@ const Home = () => {
                 <StatCard
                   icon="🏆"
                   label="Đội tham gia"
-                  value="16"
+                  value={loading ? "—" : String(counts?.TotalTeams ?? 0)}
                   accent="#38bdf8"
                 />
                 <StatCard
                   icon="⚔️"
                   label="Trận đã đấu"
-                  value="128"
+                  value={loading ? "—" : String(counts?.TotalMatches ?? 0)}
                   accent="#a78bfa"
                 />
                 <StatCard
                   icon="🎮"
                   label="Tuyển thủ"
-                  value="80"
+                  value={loading ? "—" : String(counts?.TotalPlayers ?? 0)}
                   accent="#34d399"
                 />
                 <StatCard
                   icon="📅"
-                  label="Tuần thi đấu"
-                  value="W12"
+                  label="Chuyển nhượng"
+                  value={loading ? "—" : String(counts?.TotalTransfers ?? 0)}
                   accent="#fb923c"
                 />
               </div>
@@ -401,55 +439,82 @@ const Home = () => {
                 className="divide-y"
                 style={{ divideColor: "rgba(56,189,248,.06)" }}
               >
-                {MOCK_RECENT.map((m, i) => (
+                {error && (
                   <div
-                    key={i}
-                    className="flex items-center gap-4 px-5 py-4 hover:bg-white/[0.02] transition-colors"
+                    className="px-5 py-4 text-sm font-semibold"
+                    style={{
+                      color: "#f87171",
+                      background: "rgba(248,113,113,.06)",
+                    }}
                   >
-                    {/* Teams */}
-                    <div className="flex-1 flex items-center justify-center gap-3">
-                      <span
-                        className="font-black text-sm text-white w-16 text-right"
-                        style={{ fontFamily: "'Orbitron', monospace" }}
-                      >
-                        {m.team1}
-                      </span>
-                      <div className="flex items-center gap-2">
+                    ⚠️ {error}
+                  </div>
+                )}
+                {!loading && recentMatches.length === 0 && !error && (
+                  <div
+                    className="px-5 py-10 text-center text-sm"
+                    style={{ color: "rgba(148,163,184,.5)" }}
+                  >
+                    Chưa có trận đấu nào trong mùa này.
+                  </div>
+                )}
+                {(loading ? Array.from({ length: 3 }) : recentMatches).map(
+                  (m, i) => (
+                    <div
+                      key={i}
+                      className="flex items-center gap-4 px-5 py-4 hover:bg-white/[0.02] transition-colors"
+                    >
+                      {/* Teams */}
+                      <div className="flex-1 flex items-center justify-center gap-3">
                         <span
-                          className="text-base font-black px-3 py-1 rounded-lg"
-                          style={{
-                            background: "rgba(56,189,248,.1)",
-                            color: "#38bdf8",
-                            fontFamily: "'Orbitron', monospace",
-                          }}
+                          className="font-black text-sm text-white w-16 text-right"
+                          style={{ fontFamily: "'Orbitron', monospace" }}
                         >
-                          {m.score}
+                          {loading ? "—" : m.Team1 || "—"}
+                        </span>
+                        <div className="flex items-center gap-2">
+                          <span
+                            className="text-base font-black px-3 py-1 rounded-lg"
+                            style={{
+                              background: "rgba(56,189,248,.1)",
+                              color: "#38bdf8",
+                              fontFamily: "'Orbitron', monospace",
+                            }}
+                          >
+                            {loading
+                              ? "—"
+                              : `${m.Team1Score ?? "—"}-${m.Team2Score ?? "—"}`}
+                          </span>
+                        </div>
+                        <span
+                          className="font-black text-sm text-white w-16"
+                          style={{ fontFamily: "'Orbitron', monospace" }}
+                        >
+                          {loading ? "—" : m.Team2 || "—"}
                         </span>
                       </div>
-                      <span
-                        className="font-black text-sm text-white w-16"
-                        style={{ fontFamily: "'Orbitron', monospace" }}
-                      >
-                        {m.team2}
-                      </span>
+                      {/* Meta */}
+                      <div className="hidden sm:flex flex-col items-end gap-0.5">
+                        <span
+                          className="text-xs font-semibold"
+                          style={{ color: "rgba(148,163,184,.7)" }}
+                        >
+                          {loading ? "—" : fmtTime(m.MatchDate)}
+                        </span>
+                        <span
+                          className="text-xs"
+                          style={{ color: "rgba(148,163,184,.4)" }}
+                        >
+                          {loading
+                            ? " "
+                            : m.Winner
+                              ? `Winner: ${m.Winner}`
+                              : " "}
+                        </span>
+                      </div>
                     </div>
-                    {/* Meta */}
-                    <div className="hidden sm:flex flex-col items-end gap-0.5">
-                      <span
-                        className="text-xs font-semibold"
-                        style={{ color: "rgba(148,163,184,.7)" }}
-                      >
-                        {m.time}
-                      </span>
-                      <span
-                        className="text-xs"
-                        style={{ color: "rgba(148,163,184,.4)" }}
-                      >
-                        {m.map}
-                      </span>
-                    </div>
-                  </div>
-                ))}
+                  ),
+                )}
               </div>
             </div>
 
@@ -533,63 +598,75 @@ const Home = () => {
                 </Link>
               </div>
               <div className="p-3 flex flex-col gap-1.5">
-                {MOCK_TOP.map((p) => (
-                  <div
-                    key={p.rank}
-                    className="flex items-center gap-3 px-3 py-2.5 rounded-xl transition-colors hover:bg-white/[0.03]"
-                  >
-                    {/* Rank */}
-                    <div
-                      className="w-6 text-center font-black text-xs"
-                      style={{
-                        color:
-                          p.rank === 1
-                            ? "#fbbf24"
-                            : p.rank === 2
-                              ? "#94a3b8"
-                              : p.rank === 3
-                                ? "#b45309"
-                                : "rgba(148,163,184,.4)",
-                        fontFamily: "'Orbitron', monospace",
-                      }}
-                    >
-                      {p.rank === 1 ? "👑" : `#${p.rank}`}
-                    </div>
-                    {/* Avatar placeholder */}
-                    <div
-                      className="w-8 h-8 rounded-lg flex items-center justify-center text-xs font-black flex-shrink-0"
-                      style={{
-                        background: `${ROLE_COLOR[p.role]}18`,
-                        color: ROLE_COLOR[p.role],
-                        border: `1px solid ${ROLE_COLOR[p.role]}30`,
-                      }}
-                    >
-                      {p.name.slice(0, 2).toUpperCase()}
-                    </div>
-                    {/* Name + team */}
-                    <div className="flex-1 min-w-0">
-                      <div className="text-sm font-bold text-white truncate">
-                        {p.name}
-                      </div>
+                {(loading ? Array.from({ length: 5 }) : topPlayers).map(
+                  (p, idx) => {
+                    const rank = loading ? idx + 1 : p.KDA_Rank;
+                    const role = loading ? "Mid" : p.Position;
+                    const accent = ROLE_COLOR[role] || "#94a3b8";
+                    const name = loading ? "—" : p.Nickname;
+                    const team = loading ? "—" : p.TeamShort;
+                    const kda = loading ? "—" : Number(p.AvgKDA).toFixed(2);
+                    return (
                       <div
-                        className="text-xs"
-                        style={{ color: "rgba(148,163,184,.5)" }}
+                        key={rank}
+                        className="flex items-center gap-3 px-3 py-2.5 rounded-xl transition-colors hover:bg-white/[0.03]"
                       >
-                        {p.team} · {p.role}
+                        {/* Rank */}
+                        <div
+                          className="w-6 text-center font-black text-xs"
+                          style={{
+                            color:
+                              rank === 1
+                                ? "#fbbf24"
+                                : rank === 2
+                                  ? "#94a3b8"
+                                  : rank === 3
+                                    ? "#b45309"
+                                    : "rgba(148,163,184,.4)",
+                            fontFamily: "'Orbitron', monospace",
+                          }}
+                        >
+                          {rank === 1 ? "👑" : `#${rank}`}
+                        </div>
+                        {/* Avatar placeholder */}
+                        <div
+                          className="w-8 h-8 rounded-lg flex items-center justify-center text-xs font-black flex-shrink-0"
+                          style={{
+                            background: `${accent}18`,
+                            color: accent,
+                            border: `1px solid ${accent}30`,
+                          }}
+                        >
+                          {String(name || "??")
+                            .slice(0, 2)
+                            .toUpperCase()}
+                        </div>
+                        {/* Name + team */}
+                        <div className="flex-1 min-w-0">
+                          <div className="text-sm font-bold text-white truncate">
+                            {name}
+                          </div>
+                          <div
+                            className="text-xs"
+                            style={{ color: "rgba(148,163,184,.5)" }}
+                          >
+                            {team} · {role}
+                          </div>
+                        </div>
+                        {/* KDA */}
+                        <div
+                          className="text-sm font-black"
+                          style={{
+                            color: "#38bdf8",
+                            fontFamily: "'Orbitron', monospace",
+                          }}
+                        >
+                          {kda}
+                        </div>
                       </div>
-                    </div>
-                    {/* KDA */}
-                    <div
-                      className="text-sm font-black"
-                      style={{
-                        color: "#38bdf8",
-                        fontFamily: "'Orbitron', monospace",
-                      }}
-                    >
-                      {p.kda}
-                    </div>
-                  </div>
-                ))}
+                    );
+                  },
+                )}
               </div>
             </div>
 

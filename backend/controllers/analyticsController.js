@@ -277,36 +277,46 @@ exports.getSeasonReport = async (req, res) => {
     const seasonId = req.params.id;
     const pool = getPool();
     const mongoDb = getMongoDb();
-    const [standRes, topRes, totalMatches, heroStats] = await Promise.all([
-      pool
-        .request()
-        .input("sid", sql.VarChar(10), seasonId)
-        .query(
-          `SELECT Standing_Rank,TeamName,ShortName,Wins,Losses,Points,WinRate FROM vw_TeamStandings WHERE SeasonID=@sid ORDER BY Standing_Rank`,
-        ),
-      pool
-        .request()
-        .input("sid", sql.VarChar(10), seasonId)
-        .query(
-          `SELECT TOP 5 KDA_Rank,Nickname,Position,TeamShort,AvgKDA,AvgGPM,WinRate FROM vw_Leaderboard_KDA WHERE SeasonID=@sid ORDER BY KDA_Rank`,
-        ),
-      mongoDb.collection("match_stats").countDocuments({ season_id: seasonId }),
-      mongoDb
-        .collection("match_stats")
-        .aggregate([
-          { $match: { season_id: seasonId } },
-          { $unwind: "$teams" },
-          { $unwind: "$teams.players" },
-          { $group: { _id: "$teams.players.hero", pick_count: { $sum: 1 } } },
-          { $match: { _id: { $ne: null } } },
-          { $sort: { pick_count: -1 } },
-          { $limit: 5 },
-        ])
-        .toArray(),
-    ]);
+    const [standRes, topRes, totalMatchesSQL, totalMatchesMongo, heroStats] =
+      await Promise.all([
+        pool
+          .request()
+          .input("sid", sql.VarChar(10), seasonId)
+          .query(
+            `SELECT Standing_Rank,TeamName,ShortName,Wins,Losses,Points,WinRate FROM vw_TeamStandings WHERE SeasonID=@sid ORDER BY Standing_Rank`,
+          ),
+        pool
+          .request()
+          .input("sid", sql.VarChar(10), seasonId)
+          .query(
+            `SELECT TOP 5 KDA_Rank,Nickname,Position,TeamShort,AvgKDA,AvgGPM,WinRate FROM vw_Leaderboard_KDA WHERE SeasonID=@sid ORDER BY KDA_Rank`,
+          ),
+        pool
+          .request()
+          .input("sid", sql.VarChar(10), seasonId)
+          .query(
+            `SELECT COUNT(*) AS TotalMatchesSQL FROM Matches WHERE SeasonID=@sid`,
+          ),
+        mongoDb
+          .collection("match_stats")
+          .countDocuments({ season_id: seasonId }),
+        mongoDb
+          .collection("match_stats")
+          .aggregate([
+            { $match: { season_id: seasonId } },
+            { $unwind: "$teams" },
+            { $unwind: "$teams.players" },
+            { $group: { _id: "$teams.players.hero", pick_count: { $sum: 1 } } },
+            { $match: { _id: { $ne: null } } },
+            { $sort: { pick_count: -1 } },
+            { $limit: 5 },
+          ])
+          .toArray(),
+      ]);
     res.json({
       season_id: seasonId,
-      total_matches_mongo: totalMatches,
+      total_matches_sql: totalMatchesSQL?.recordset?.[0]?.TotalMatchesSQL || 0,
+      total_matches_mongo: totalMatchesMongo,
       standings: standRes.recordset,
       top_players: topRes.recordset,
       top_heroes: heroStats,

@@ -172,9 +172,82 @@ const SeasonReport = () => {
                   border: "1px solid rgba(251,191,36,.25)",
                 }}
               >
-                ⚡ Tổng trận MongoDB: {report.total_matches_mongo}
+                ⚡ Mongo match_stats: {report.total_matches_mongo}
+              </span>
+              <span
+                className="text-xs px-3 py-1 rounded-full font-bold"
+                style={{
+                  background: "rgba(56,189,248,.10)",
+                  color: "rgba(226,232,240,.85)",
+                  border: "1px solid rgba(148,163,184,.18)",
+                }}
+              >
+                🧾 SQL Matches: {report.total_matches_sql ?? 0}
               </span>
             </div>
+
+            {/* Consistency Check (Multi-DB highlight) */}
+            {(() => {
+              const sqlCount = Number(report.total_matches_sql ?? 0);
+              const mongoCount = Number(report.total_matches_mongo ?? 0);
+              const delta = mongoCount - sqlCount;
+              const ok = delta === 0;
+              return (
+                <div
+                  className="fade-up mb-5 px-5 py-4 rounded-2xl"
+                  style={{
+                    background: ok
+                      ? "rgba(52,211,153,.06)"
+                      : "rgba(248,113,113,.06)",
+                    border: ok
+                      ? "1px solid rgba(52,211,153,.18)"
+                      : "1px solid rgba(248,113,113,.18)",
+                  }}
+                >
+                  <div className="flex items-center justify-between gap-4 flex-wrap">
+                    <div>
+                      <div
+                        className="text-xs font-black uppercase tracking-[0.25em]"
+                        style={{
+                          color: ok
+                            ? "rgba(52,211,153,.9)"
+                            : "rgba(248,113,113,.9)",
+                          fontFamily: "'Orbitron',monospace",
+                          fontSize: "0.68rem",
+                        }}
+                      >
+                        Multi-DB Consistency Check
+                      </div>
+                      <div
+                        className="text-sm mt-1"
+                        style={{ color: "rgba(226,232,240,.9)" }}
+                      >
+                        So sánh dữ liệu vận hành (SQL) và dữ liệu raw/analytics
+                        (MongoDB) cho cùng 1 mùa giải.
+                      </div>
+                    </div>
+                    <div
+                      className="text-sm font-black"
+                      style={{
+                        color: ok ? "#34d399" : "#f87171",
+                        fontFamily: "'Orbitron',monospace",
+                      }}
+                    >
+                      {ok ? "OK" : `Δ ${delta > 0 ? "+" : ""}${delta}`}
+                    </div>
+                  </div>
+
+                  <div
+                    className="mt-3 text-xs"
+                    style={{ color: "rgba(148,163,184,.65)" }}
+                  >
+                    {ok
+                      ? "Hai nguồn khớp nhau → pipeline đồng bộ dữ liệu ổn định."
+                      : "Chênh lệch thường do: match chưa ghi vào SQL hoặc chưa ingest vào MongoDB. Đây là điểm nổi bật của hệ đa DB: có thể giám sát và phát hiện lệch dữ liệu."}
+                  </div>
+                </div>
+              );
+            })()}
 
             <div className="grid lg:grid-cols-2 gap-5">
               {/* Standings */}

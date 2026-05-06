@@ -317,6 +317,82 @@ const PlayerFormChart = () => {
 
   const kdaColor = (v) => (v >= 5 ? "#34d399" : v >= 3 ? "#38bdf8" : "#f87171");
 
+  const buildInsights = (s) => {
+    if (!s) return [];
+    const kda = Number(s.avg_kda || 0);
+    const wr = Number(s.win_rate || 0);
+    const deaths = Number(s.avg_deaths || 0);
+    const kills = Number(s.avg_kills || 0);
+    const assists = Number(s.avg_assists || 0);
+    const gold = Number(s.avg_gold || 0);
+
+    const items = [];
+
+    // Playstyle tags (quick read)
+    const tags = [];
+    if (kda >= 5) tags.push({ text: "Ổn định cao", color: "#34d399" });
+    else if (kda >= 3) tags.push({ text: "Ổn định khá", color: "#38bdf8" });
+    else tags.push({ text: "Rủi ro cao", color: "#f87171" });
+
+    if (wr >= 60) tags.push({ text: "Form thắng tốt", color: "#34d399" });
+    else if (wr >= 45) tags.push({ text: "Form trung bình", color: "#fbbf24" });
+    else tags.push({ text: "Form yếu", color: "#f87171" });
+
+    if (gold >= 12000) tags.push({ text: "Tài nguyên mạnh", color: "#fb923c" });
+    if (assists >= 8)
+      tags.push({ text: "Hỗ trợ giao tranh", color: "#a78bfa" });
+    if (kills >= 7)
+      tags.push({ text: "Thiên hướng snowball", color: "#34d399" });
+
+    // Strategy suggestions (rule-based)
+    if (deaths >= 6) {
+      items.push({
+        title: "Giảm rủi ro đầu–giữa game",
+        detail:
+          "Deaths TB cao → ưu tiên kiểm soát tầm nhìn, đánh theo nhịp mục tiêu lớn, hạn chế giao tranh khi chưa đủ thông tin.",
+        color: "#f87171",
+      });
+    }
+
+    if (gold >= 12000 && wr < 50) {
+      items.push({
+        title: "Chuyển lợi thế tài nguyên thành mục tiêu",
+        detail:
+          "Gold TB cao nhưng Win Rate chưa tương xứng → tập trung macro: chuyển lợi thế lane thành Rồng/Sứ Giả/Baron thay vì chase kills.",
+        color: "#fb923c",
+      });
+    }
+
+    if (kda >= 4.5 && wr >= 55) {
+      items.push({
+        title: "Ưu tiên draft xoay quanh tuyển thủ",
+        detail:
+          "Phong độ ổn + Win Rate tốt → cân nhắc pick/ban, ưu tiên tài nguyên sớm (path rừng/đi mid roam) để snowball trận.",
+        color: "#34d399",
+      });
+    }
+
+    if (assists >= 8 && kills < 5) {
+      items.push({
+        title: "Tối ưu phối hợp giao tranh",
+        detail:
+          "Assists TB cao → khai thác lối chơi phối hợp: mở combat theo team, set up giao tranh theo tầm nhìn thay vì đánh lẻ.",
+        color: "#a78bfa",
+      });
+    }
+
+    if (items.length === 0) {
+      items.push({
+        title: "Gợi ý tổng quát",
+        detail:
+          "Dữ liệu chưa đủ nổi bật theo ngưỡng rule-based. Hãy so kèo với 1 tuyển thủ khác hoặc lọc theo mùa để thấy chênh lệch rõ hơn.",
+        color: "rgba(148,163,184,.75)",
+      });
+    }
+
+    return { tags, items };
+  };
+
   return (
     <div
       className="min-h-screen relative overflow-x-hidden text-slate-200"
@@ -595,6 +671,99 @@ const PlayerFormChart = () => {
                     color="#fb923c"
                   />
                 </div>
+              </div>
+            </div>
+
+            {/* Strategy Insight */}
+            <div
+              className="fade-up d1 rounded-2xl p-5 mb-4"
+              style={{
+                background: "rgba(13,17,30,.9)",
+                border: "1px solid rgba(167,139,250,.12)",
+              }}
+            >
+              <div className="flex items-start justify-between gap-4 flex-wrap">
+                <div>
+                  <div className="flex items-center gap-2 mb-1">
+                    <span
+                      className="text-xs font-bold uppercase tracking-[0.25em]"
+                      style={{ color: "rgba(167,139,250,.7)" }}
+                    >
+                      Strategy Insight
+                    </span>
+                    <span
+                      className="text-[10px] font-black uppercase tracking-widest px-2 py-1 rounded-full border"
+                      style={{
+                        color: "rgba(148,163,184,.75)",
+                        borderColor: "rgba(148,163,184,.18)",
+                        background: "rgba(148,163,184,.06)",
+                      }}
+                    >
+                      50 trận gần nhất
+                    </span>
+                  </div>
+                  <div
+                    className="text-sm font-bold"
+                    style={{ color: "rgba(226,232,240,.9)" }}
+                  >
+                    Gợi ý chiến thuật dựa trên phong độ & xu hướng thi đấu
+                  </div>
+                </div>
+
+                <div className="flex flex-wrap gap-2">
+                  {buildInsights(stats).tags.map((t) => (
+                    <span
+                      key={t.text}
+                      className="text-xs font-black px-3 py-1 rounded-full border"
+                      style={{
+                        color: t.color,
+                        borderColor: `${t.color}40`,
+                        background: `${t.color}14`,
+                        fontFamily: "'Orbitron',monospace",
+                        fontSize: "0.62rem",
+                      }}
+                    >
+                      {t.text}
+                    </span>
+                  ))}
+                </div>
+              </div>
+
+              <div className="mt-4 grid md:grid-cols-2 gap-3">
+                {buildInsights(stats).items.map((it) => (
+                  <div
+                    key={it.title}
+                    className="rounded-2xl p-4"
+                    style={{
+                      background: "rgba(255,255,255,.03)",
+                      border: `1px solid ${
+                        typeof it.color === "string" &&
+                        it.color.startsWith("rgba")
+                          ? "rgba(148,163,184,.14)"
+                          : `${it.color}25`
+                      }`,
+                    }}
+                  >
+                    <div
+                      className="text-xs font-black uppercase tracking-widest mb-2"
+                      style={{
+                        color:
+                          typeof it.color === "string" &&
+                          it.color.startsWith("rgba")
+                            ? "rgba(148,163,184,.7)"
+                            : it.color,
+                      }}
+                    >
+                      {it.title}
+                    </div>
+                    <div
+                      className="text-sm leading-relaxed"
+                      style={{ color: "rgba(148,163,184,.75)" }}
+                    >
+                      {it.detail}
+                    </div>
+                  </div>
+                ))}
               </div>
             </div>
 

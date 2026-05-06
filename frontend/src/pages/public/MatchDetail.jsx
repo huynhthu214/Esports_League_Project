@@ -32,7 +32,7 @@ const MatchDetail = () => {
 
   useEffect(() => {
     axiosClient
-      .get(`/matches/${matchId}/detail`)
+      .get(`/admin/matches/${matchId}/detail`)
       .then((r) => setDetail(r.data.data))
       .catch((err) =>
         setError(
