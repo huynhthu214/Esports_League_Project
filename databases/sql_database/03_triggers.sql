@@ -63,18 +63,29 @@ AFTER INSERT, UPDATE
 AS
 BEGIN
     SET NOCOUNT ON;
+
+    -- ============================================================
+    -- FIX: Tránh correlated subquery trong HAVING (lỗi khi batch INSERT)
+    -- Logic đúng:
+    --   1. Lấy danh sách (TeamID, SeasonID) bị ảnh hưởng từ `inserted`
+    --   2. Đếm tổng ACTIVE trong Rosters (đã bao gồm inserted vì AFTER trigger)
+    --      bằng cách GROUP BY + JOIN — không dùng subquery correlated
+    --   3. Nếu bất kỳ nhóm nào > 10 → ROLLBACK
+    -- ============================================================
     IF EXISTS (
-        SELECT i.TeamID, i.SeasonID
-        FROM inserted i
-        WHERE i.Status = 'ACTIVE'
-        GROUP BY i.TeamID, i.SeasonID
-        HAVING (
-            -- Đếm số người ACTIVE hiện có trong Rosters (không tính inserted)
-            SELECT COUNT(*) FROM Rosters r
-            WHERE r.TeamID = i.TeamID 
-              AND r.SeasonID = i.SeasonID
-              AND r.Status = 'ACTIVE'
-        ) > 10
+        SELECT r.TeamID, r.SeasonID
+        FROM Rosters r
+        -- Chỉ xét các (TeamID, SeasonID) có trong batch inserted hiện tại
+        INNER JOIN (
+            SELECT DISTINCT TeamID, SeasonID
+            FROM inserted
+            WHERE Status = 'ACTIVE'
+        ) AS affected
+            ON  r.TeamID   = affected.TeamID
+            AND r.SeasonID = affected.SeasonID
+        WHERE r.Status = 'ACTIVE'
+        GROUP BY r.TeamID, r.SeasonID
+        HAVING COUNT(*) > 10          -- COUNT(*) giờ là aggregate trên GROUP BY, không phải subquery
     )
     BEGIN
         ROLLBACK TRANSACTION;
