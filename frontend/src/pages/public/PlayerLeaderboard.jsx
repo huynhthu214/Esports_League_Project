@@ -41,7 +41,6 @@ const kdaColor = (v) => {
 };
 
 const STYLE = `
-  @import url('https://fonts.googleapis.com/css2?family=Orbitron:wght@700;900&family=Rajdhani:wght@400;500;600;700&display=swap');
   @keyframes fadeUp { from{opacity:0;transform:translateY(16px)} to{opacity:1;transform:translateY(0)} }
   @keyframes spin { to{transform:rotate(360deg)} }
   .fade-up { animation: fadeUp .4s ease both; }
@@ -49,7 +48,7 @@ const STYLE = `
   tr { transition: background .15s; }
 `;
 
-const MEDAL = { 1: "🥇", 2: "🥈", 3: "🥉" };
+const MEDAL = { 1: "#1", 2: "#2", 3: "#3" };
 
 const PlayerLeaderboard = () => {
   const [seasons, setSeasons] = useState([]);
@@ -102,11 +101,8 @@ const PlayerLeaderboard = () => {
 
   return (
     <div
-      className="min-h-screen relative overflow-x-hidden text-slate-200"
-      style={{
-        background: "#080c16",
-        fontFamily: "'Rajdhani','Segoe UI',sans-serif",
-      }}
+      className="min-h-[calc(100vh-80px)] w-full relative overflow-x-hidden text-slate-200 font-sans"
+      style={{ background: "#080c16" }}
     >
       <style>{STYLE}</style>
 
@@ -129,7 +125,7 @@ const PlayerLeaderboard = () => {
         />
       </div>
 
-      <div className="relative z-10 max-w-7xl mx-auto px-4 sm:px-6 lg:px-8 py-8">
+      <div className="relative z-10 max-w-7xl mx-auto p-8">
         {/* Header */}
         <div className="fade-up mb-6">
           <div className="flex items-center gap-2 mb-1">
@@ -141,14 +137,8 @@ const PlayerLeaderboard = () => {
               Bảng Xếp Hạng
             </span>
           </div>
-          <h1
-            className="text-3xl font-black uppercase text-white"
-            style={{
-              fontFamily: "'Orbitron',monospace",
-              textShadow: "0 0 30px rgba(56,189,248,.3)",
-            }}
-          >
-            🏆 KDA Leaderboard
+          <h1 className="text-3xl font-black italic tracking-wider text-transparent bg-clip-text bg-gradient-to-r from-cyan-400 to-blue-500 uppercase mb-1">
+            KDA Leaderboard
           </h1>
         </div>
 
@@ -164,8 +154,6 @@ const PlayerLeaderboard = () => {
               background: "rgba(13,17,30,.9)",
               border: "1px solid rgba(56,189,248,.25)",
               color: "#38bdf8",
-              fontFamily: "'Orbitron',monospace",
-              fontSize: "0.75rem",
             }}
           >
             {loadingSeason ? (
@@ -190,8 +178,6 @@ const PlayerLeaderboard = () => {
               background: "rgba(13,17,30,.9)",
               border: "1px solid rgba(167,139,250,.25)",
               color: "#a78bfa",
-              fontFamily: "'Orbitron',monospace",
-              fontSize: "0.75rem",
             }}
           >
             {POSITIONS.map((p) => (
@@ -334,7 +320,6 @@ const PlayerLeaderboard = () => {
                               className="text-sm font-black"
                               style={{
                                 color: "rgba(148,163,184,.5)",
-                                fontFamily: "'Orbitron',monospace",
                               }}
                             >
                               #{row.KDA_Rank}
@@ -413,7 +398,6 @@ const PlayerLeaderboard = () => {
                             style={{
                               color: kdaColor(row.AvgKDA),
                               background: `${kdaColor(row.AvgKDA)}18`,
-                              fontFamily: "'Orbitron',monospace",
                             }}
                           >
                             {Number(row.AvgKDA).toFixed(2)}
@@ -456,8 +440,7 @@ const PlayerLeaderboard = () => {
           className="text-xs mt-4 text-center"
           style={{ color: "rgba(148,163,184,.3)" }}
         >
-          Dữ liệu từ SQL Server · View: vw_Leaderboard_KDA · DENSE_RANK theo
-          AvgKDA
+          Xếp hạng theo AvgKDA
         </p>
       </div>
     </div>

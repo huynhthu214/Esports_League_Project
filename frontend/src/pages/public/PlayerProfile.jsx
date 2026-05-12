@@ -57,7 +57,7 @@ const PlayerProfile = () => {
   const { info, seasonStats, transfers } = profile;
 
   return (
-    <div className="min-h-[calc(100vh-80px)] h-full flex-1 w-full bg-[#050c18] text-slate-200 p-6 font-sans relative overflow-hidden">
+    <div className="min-h-[calc(100vh-80px)] h-full flex-1 w-full bg-[#050c18] text-slate-200 p-6 relative overflow-hidden">
       {/* Background glow */}
       <div className="absolute top-[-10%] left-[-5%] w-[400px] h-[400px] bg-cyan-600/10 rounded-full blur-[130px] pointer-events-none"></div>
 

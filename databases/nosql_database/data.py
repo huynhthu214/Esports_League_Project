@@ -179,7 +179,7 @@ else:
 # ═══════════════════════════════════════════════════════════════════
 # KIỂM TRA KẾT QUẢ
 # ═══════════════════════════════════════════════════════════════════
-print("\n📊 Kiểm tra kết quả cuối:")
+print("\nKiểm tra kết quả cuối:")
 total = col.count_documents({})
 ss2025_count    = col.count_documents({"season_id": "SS2025"})
 ss2025_2_count  = col.count_documents({"season_id": "SS2025_2"})

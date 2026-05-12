@@ -1,6 +1,11 @@
 import { useState, useEffect } from "react";
 import axiosClient from "../../api/axiosClient";
 
+const STYLE = `
+  @keyframes dot-blink { 0%,100%{opacity:1} 50%{opacity:.3} }
+  .dot-blink { animation: dot-blink 1.8s ease infinite; }
+`;
+
 const SeasonTeamForm = () => {
   const [seasons, setSeasons] = useState([]);
   const [teams, setTeams] = useState([]);
@@ -84,14 +89,11 @@ const SeasonTeamForm = () => {
 
   return (
     <div className="min-h-[calc(100vh-80px)] h-full flex-1 w-full bg-[#0b1120] text-slate-200 p-8 font-sans">
+      <style>{STYLE}</style>
       <div className="max-w-4xl mx-auto">
         <h1 className="text-3xl font-black italic tracking-wider text-transparent bg-clip-text bg-gradient-to-r from-yellow-400 to-orange-500 uppercase mb-2">
-          🏟️ Đăng ký đội vào mùa giải
+          Đăng ký đội vào mùa giải
         </h1>
-        <p className="text-sm text-slate-400 mb-8 font-medium">
-          Bước bắt buộc trước khi đăng ký Roster. Trigger sẽ chặn nếu đội chưa
-          có trong SeasonTeams.
-        </p>
 
         {status && (
           <div

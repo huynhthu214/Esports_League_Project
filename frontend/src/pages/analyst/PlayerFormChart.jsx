@@ -2,7 +2,6 @@ import { useState, useEffect } from "react";
 import axiosClient from "../../api/axiosClient";
 
 const STYLE = `
-  @import url('https://fonts.googleapis.com/css2?family=Orbitron:wght@700;900&family=Rajdhani:wght@400;500;600;700&display=swap');
   @keyframes fadeUp { from{opacity:0;transform:translateY(16px)} to{opacity:1;transform:translateY(0)} }
   @keyframes spin { to{transform:rotate(360deg)} }
   @keyframes radarIn { from{opacity:0;transform:scale(0.7);transform-origin:center center} to{opacity:1;transform:scale(1)} }
@@ -186,7 +185,6 @@ const RadarChart = ({ stats }) => {
               textAnchor={anchor}
               style={{
                 fontSize: "11px",
-                fontFamily: "'Rajdhani',sans-serif",
                 fontWeight: 700,
                 fill: ax.color,
                 letterSpacing: "0.04em",
@@ -211,7 +209,6 @@ const RadarChart = ({ stats }) => {
               textAnchor={anchor}
               style={{
                 fontSize: "9.5px",
-                fontFamily: "'Orbitron',monospace",
                 fontWeight: 700,
                 fill: axes[i].color,
               }}
@@ -246,10 +243,7 @@ const Bar = ({ label, value, max, color }) => (
         }}
       />
     </div>
-    <div
-      className="w-12 text-xs font-black text-right"
-      style={{ color, fontFamily: "'Orbitron',monospace" }}
-    >
+    <div className="w-12 text-xs font-black text-right" style={{ color }}>
       {typeof value === "number" ? value.toFixed(2) : value}
     </div>
   </div>
@@ -270,10 +264,7 @@ const MiniStat = ({ label, value, color, sub }) => (
     >
       {label}
     </div>
-    <div
-      className="text-lg font-black leading-tight"
-      style={{ color, fontFamily: "'Orbitron',monospace" }}
-    >
+    <div className="text-lg font-black leading-tight" style={{ color }}>
       {value}
     </div>
     {sub && (
@@ -308,9 +299,7 @@ const PlayerFormChart = () => {
       .get(`/analytics/players/${playerId}/form`)
       .then((r) => setStats(r.data))
       .catch(() =>
-        setError(
-          "Không tìm thấy dữ liệu. Tuyển thủ này chưa có trận nào trong MongoDB.",
-        ),
+        setError("Không tìm thấy dữ liệu. Tuyển thủ này chưa có trận nào."),
       )
       .finally(() => setLoading(false));
   };
@@ -395,10 +384,9 @@ const PlayerFormChart = () => {
 
   return (
     <div
-      className="min-h-screen relative overflow-x-hidden text-slate-200"
+      className="min-h-[calc(100vh-80px)] w-full relative overflow-x-hidden text-slate-200 font-sans"
       style={{
         background: "#080c16",
-        fontFamily: "'Rajdhani','Segoe UI',sans-serif",
       }}
     >
       <style>{STYLE}</style>
@@ -422,7 +410,7 @@ const PlayerFormChart = () => {
         />
       </div>
 
-      <div className="relative z-10 max-w-4xl mx-auto px-4 sm:px-6 py-8">
+      <div className="relative z-10 max-w-4xl mx-auto p-8">
         {/* Header */}
         <div className="fade-up mb-6">
           <div className="flex items-center gap-2 mb-1">
@@ -431,17 +419,14 @@ const PlayerFormChart = () => {
               className="text-xs font-bold uppercase tracking-[0.25em]"
               style={{ color: "rgba(56,189,248,.7)" }}
             >
-              MongoDB Aggregation · 50 trận
+              Phân tích · 50 trận
             </span>
           </div>
-          <h1
-            className="text-3xl font-black uppercase text-white"
-            style={{ fontFamily: "'Orbitron',monospace" }}
-          >
-            📈 Phong Độ Tuyển Thủ
+          <h1 className="text-3xl font-black italic tracking-wider text-transparent bg-clip-text bg-gradient-to-r from-cyan-400 to-blue-500 uppercase mb-1">
+            Phong Độ Tuyển Thủ
           </h1>
-          <p className="text-sm mt-1" style={{ color: "rgba(148,163,184,.6)" }}>
-            Phân tích hiệu suất 50 trận gần nhất từ MongoDB.
+          <p className="text-sm font-medium text-slate-400 mt-1">
+            Phân tích hiệu suất 50 trận gần nhất.
           </p>
         </div>
 
@@ -462,8 +447,6 @@ const PlayerFormChart = () => {
                 background: "rgba(0,0,0,.4)",
                 border: "1px solid rgba(56,189,248,.25)",
                 color: "#38bdf8",
-                fontFamily: "'Orbitron',monospace",
-                fontSize: "0.72rem",
               }}
             >
               <option value="">-- Chọn tuyển thủ --</option>
@@ -480,8 +463,6 @@ const PlayerFormChart = () => {
               style={{
                 background: "linear-gradient(135deg,#0ea5e9,#38bdf8)",
                 boxShadow: "0 0 18px rgba(56,189,248,.3)",
-                fontFamily: "'Orbitron',monospace",
-                fontSize: "0.7rem",
               }}
             >
               {loading ? <span className="spinner" /> : "Phân Tích"}
@@ -577,7 +558,6 @@ const PlayerFormChart = () => {
                       className="text-5xl font-black"
                       style={{
                         color: kdaColor(stats.avg_kda),
-                        fontFamily: "'Orbitron',monospace",
                       }}
                     >
                       {(stats.avg_kda || 0).toFixed(2)}
@@ -587,10 +567,10 @@ const PlayerFormChart = () => {
                       style={{ color: "rgba(148,163,184,.4)" }}
                     >
                       {stats.avg_kda >= 5
-                        ? "🏆 Xuất sắc"
+                        ? "Xuất sắc"
                         : stats.avg_kda >= 3
-                          ? "⚡ Tốt"
-                          : "⚠️ Cần cải thiện"}
+                          ? "Tốt"
+                          : "Cần cải thiện"}
                     </div>
                   </div>
                   <div className="flex-1 grid grid-cols-2 gap-2">
@@ -604,10 +584,7 @@ const PlayerFormChart = () => {
                       >
                         Trận
                       </div>
-                      <div
-                        className="text-xl font-black text-white"
-                        style={{ fontFamily: "'Orbitron',monospace" }}
-                      >
+                      <div className="text-xl font-black text-white" style={{}}>
                         {stats.total_matches}
                       </div>
                     </div>
@@ -625,7 +602,6 @@ const PlayerFormChart = () => {
                         className="text-xl font-black"
                         style={{
                           color: "#fbbf24",
-                          fontFamily: "'Orbitron',monospace",
                         }}
                       >
                         {stats.win_rate}%
@@ -711,7 +687,6 @@ const PlayerFormChart = () => {
                         color: t.color,
                         borderColor: `${t.color}40`,
                         background: `${t.color}14`,
-                        fontFamily: "'Orbitron',monospace",
                         fontSize: "0.62rem",
                       }}
                     >

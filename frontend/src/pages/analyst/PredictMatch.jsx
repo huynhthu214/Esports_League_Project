@@ -1,8 +1,8 @@
 import { useState, useEffect } from "react";
 import axiosClient from "../../api/axiosClient";
+import { Target } from "lucide-react";
 
 const STYLE = `
-  @import url('https://fonts.googleapis.com/css2?family=Orbitron:wght@700;900&family=Rajdhani:wght@400;500;600;700&display=swap');
   @keyframes fadeUp { from{opacity:0;transform:translateY(16px)} to{opacity:1;transform:translateY(0)} }
   @keyframes spin { to{transform:rotate(360deg)} }
   @keyframes fill { from{width:0} }
@@ -46,11 +46,7 @@ const PredictMatch = () => {
     axiosClient
       .get("/analytics/predict", { params: { team1, team2, seasonId } })
       .then((r) => setResult(r.data))
-      .catch(() =>
-        setError(
-          "Không tải được dữ liệu dự đoán. Kiểm tra SQL + MongoDB đang chạy.",
-        ),
-      )
+      .catch(() => setError("Không tải được dữ liệu dự đoán."))
       .finally(() => setLoading(false));
   };
 
@@ -61,10 +57,9 @@ const PredictMatch = () => {
 
   return (
     <div
-      className="min-h-screen relative overflow-x-hidden text-slate-200"
+      className="min-h-[calc(100vh-80px)] w-full relative overflow-x-hidden text-slate-200 font-sans"
       style={{
         background: "#080c16",
-        fontFamily: "'Rajdhani','Segoe UI',sans-serif",
       }}
     >
       <style>{STYLE}</style>
@@ -85,7 +80,7 @@ const PredictMatch = () => {
           }}
         />
       </div>
-      <div className="relative z-10 max-w-3xl mx-auto px-4 sm:px-6 py-8">
+      <div className="relative z-10 max-w-3xl mx-auto p-8">
         <div className="fade-up mb-6">
           <div className="flex items-center gap-2 mb-1">
             <div className="w-2 h-2 rounded-full bg-cyan-400 animate-pulse" />
@@ -93,18 +88,15 @@ const PredictMatch = () => {
               className="text-xs font-bold uppercase tracking-[0.25em]"
               style={{ color: "rgba(56,189,248,.7)" }}
             >
-              SQL + MongoDB
+              Dự đoán
             </span>
           </div>
-          <h1
-            className="text-3xl font-black uppercase text-white"
-            style={{ fontFamily: "'Orbitron',monospace" }}
-          >
-            🔮 Dự Đoán Trận Đấu
+          <h1 className="text-3xl font-black italic tracking-wider text-transparent bg-clip-text bg-gradient-to-r from-cyan-400 to-blue-500 uppercase mb-1">
+            Dự Đoán Trận Đấu
           </h1>
-          <p className="text-sm mt-1" style={{ color: "rgba(148,163,184,.6)" }}>
-            Dự đoán dựa trên Win Rate SQL (50%) + Điểm (30%) + Form MongoDB
-            (20%).
+          <p className="text-sm font-medium text-slate-400 mt-1">
+            Dự đoán dựa trên tỉ lệ thắng (50%) + điểm số (30%) + phong độ gần
+            đây (20%).
           </p>
         </div>
         <div
@@ -123,8 +115,6 @@ const PredictMatch = () => {
                 background: "rgba(0,0,0,.4)",
                 border: "1px solid rgba(167,139,250,.3)",
                 color: "#a78bfa",
-                fontFamily: "'Orbitron',monospace",
-                fontSize: "0.7rem",
               }}
             >
               <option value="">-- Mùa giải --</option>
@@ -147,8 +137,6 @@ const PredictMatch = () => {
                   background: "rgba(0,0,0,.4)",
                   border: `1px solid ${color}30`,
                   color,
-                  fontFamily: "'Orbitron',monospace",
-                  fontSize: "0.7rem",
                 }}
               >
                 <option value="">-- {label} --</option>
@@ -167,11 +155,9 @@ const PredictMatch = () => {
             style={{
               background: "linear-gradient(135deg,#0369a1,#38bdf8)",
               boxShadow: "0 0 18px rgba(56,189,248,.3)",
-              fontFamily: "'Orbitron',monospace",
-              fontSize: "0.7rem",
             }}
           >
-            {loading ? <span className="spinner" /> : "🔮 Dự Đoán"}
+            {loading ? <span className="spinner" /> : "Dự Đoán"}
           </button>
         </div>
         {error && (
@@ -212,7 +198,6 @@ const PredictMatch = () => {
                 className="text-4xl font-black mb-1"
                 style={{
                   color: winnerColor,
-                  fontFamily: "'Orbitron',monospace",
                 }}
               >
                 {result.prediction}
@@ -254,7 +239,6 @@ const PredictMatch = () => {
                   className="font-black"
                   style={{
                     color: "#38bdf8",
-                    fontFamily: "'Orbitron',monospace",
                   }}
                 >
                   {result.team1.name}
@@ -269,7 +253,6 @@ const PredictMatch = () => {
                   className="font-black"
                   style={{
                     color: "#f87171",
-                    fontFamily: "'Orbitron',monospace",
                   }}
                 >
                   {result.team2.name}
@@ -298,7 +281,7 @@ const PredictMatch = () => {
                 </div>
                 <div
                   className="flex justify-between text-xs font-black mt-1"
-                  style={{ fontFamily: "'Orbitron',monospace" }}
+                  style={{}}
                 >
                   <span style={{ color: "#38bdf8" }}>
                     {result.team1.win_prob}%

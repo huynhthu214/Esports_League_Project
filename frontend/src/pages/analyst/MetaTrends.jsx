@@ -1,8 +1,8 @@
 import { useState, useEffect } from "react";
 import axiosClient from "../../api/axiosClient";
+import { Flame } from "lucide-react";
 
 const STYLE = `
-  @import url('https://fonts.googleapis.com/css2?family=Orbitron:wght@700;900&family=Rajdhani:wght@400;500;600;700&display=swap');
   @keyframes fadeUp { from{opacity:0;transform:translateY(16px)} to{opacity:1;transform:translateY(0)} }
   @keyframes spin { to{transform:rotate(360deg)} }
   @keyframes barIn { from{width:0} to{width:var(--w)} }
@@ -48,7 +48,7 @@ const MetaTrends = () => {
         const d = r.data;
         const list = d?.heroes || [];
         setTotalPicks(d?.total_picks || 0);
-        if (!list?.length) setError("Chưa có dữ liệu tướng trong MongoDB.");
+        if (!list?.length) setError("Chưa có dữ liệu tướng.");
         else setHeroes(list);
       })
       .catch(() => setError("Không tải được dữ liệu Meta."))
@@ -88,10 +88,9 @@ const MetaTrends = () => {
 
   return (
     <div
-      className="min-h-screen relative overflow-x-hidden text-slate-200"
+      className="min-h-[calc(100vh-80px)] w-full relative overflow-x-hidden text-slate-200 font-sans"
       style={{
         background: "#080c16",
-        fontFamily: "'Rajdhani','Segoe UI',sans-serif",
       }}
     >
       <style>{STYLE}</style>
@@ -112,7 +111,7 @@ const MetaTrends = () => {
           }}
         />
       </div>
-      <div className="relative z-10 max-w-3xl mx-auto px-4 sm:px-6 py-8">
+      <div className="relative z-10 max-w-3xl mx-auto p-8">
         <div className="fade-up mb-6">
           <div className="flex items-center gap-2 mb-1">
             <div className="w-2 h-2 rounded-full bg-emerald-400 animate-pulse" />
@@ -120,16 +119,13 @@ const MetaTrends = () => {
               className="text-xs font-bold uppercase tracking-[0.25em]"
               style={{ color: "rgba(52,211,153,.7)" }}
             >
-              MongoDB Aggregation
+              Tổng hợp dữ liệu
             </span>
           </div>
-          <h1
-            className="text-3xl font-black uppercase text-white"
-            style={{ fontFamily: "'Orbitron',monospace" }}
-          >
-            🧠 Meta Tướng
+          <h1 className="text-3xl font-black italic tracking-wider text-transparent bg-clip-text bg-gradient-to-r from-emerald-400 to-cyan-500 uppercase mb-1">
+            Meta Tướng
           </h1>
-          <p className="text-sm mt-1" style={{ color: "rgba(148,163,184,.6)" }}>
+          <p className="text-sm font-medium text-slate-400 mt-1">
             Top 10 tướng được pick nhiều nhất và win rate tương ứng.
           </p>
         </div>
@@ -142,8 +138,6 @@ const MetaTrends = () => {
               background: "rgba(13,17,30,.9)",
               border: "1px solid rgba(52,211,153,.25)",
               color: "#34d399",
-              fontFamily: "'Orbitron',monospace",
-              fontSize: "0.72rem",
             }}
           >
             <option value="">-- Tất cả mùa --</option>
@@ -161,8 +155,6 @@ const MetaTrends = () => {
               background: "rgba(13,17,30,.9)",
               border: "1px solid rgba(52,211,153,.15)",
               color: "rgba(226,232,240,.9)",
-              fontFamily: "'Orbitron',monospace",
-              fontSize: "0.72rem",
             }}
           >
             {[10, 15, 20, 30].map((n) => (
@@ -179,8 +171,6 @@ const MetaTrends = () => {
               background: "rgba(13,17,30,.9)",
               border: "1px solid rgba(52,211,153,.15)",
               color: "rgba(226,232,240,.9)",
-              fontFamily: "'Orbitron',monospace",
-              fontSize: "0.72rem",
             }}
           >
             <option value="pick_count">Sort: Pick nhiều</option>
@@ -217,9 +207,9 @@ const MetaTrends = () => {
             className="text-center py-20"
             style={{ color: "rgba(148,163,184,.4)" }}
           >
-            <div className="text-4xl mb-3">🧠</div>
+            <Flame size={36} className="mb-3 mx-auto text-slate-600" />
             <div className="text-sm">
-              Chưa có dữ liệu tướng. Nhập kết quả trận đấu vào MongoDB trước.
+              Chưa có dữ liệu tướng. Hãy nhập kết quả trận đấu trước.
             </div>
           </div>
         )}
@@ -250,7 +240,6 @@ const MetaTrends = () => {
                       background: `${color}18`,
                       color,
                       border: `1px solid ${color}30`,
-                      fontFamily: "'Orbitron',monospace",
                     }}
                   >
                     {TIER_LABEL(i)}
@@ -258,7 +247,7 @@ const MetaTrends = () => {
                   <div className="flex-1 min-w-0">
                     <div
                       className="font-black text-white text-sm truncate"
-                      style={{ fontFamily: "'Orbitron',monospace" }}
+                      style={{}}
                     >
                       {h._id || "Unknown"}
                     </div>
@@ -302,10 +291,7 @@ const MetaTrends = () => {
                     >
                       Share
                     </div>
-                    <div
-                      className="font-black text-sm"
-                      style={{ color, fontFamily: "'Orbitron',monospace" }}
-                    >
+                    <div className="font-black text-sm" style={{ color }}>
                       {h.pick_rate != null ? `${h.pick_rate}%` : "-"}
                     </div>
                   </div>

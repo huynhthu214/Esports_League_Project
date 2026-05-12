@@ -1,8 +1,8 @@
 import { useState, useEffect } from "react";
 import axiosClient from "../../api/axiosClient";
+import { CalendarOff } from "lucide-react";
 
 const STYLE = `
-  @import url('https://fonts.googleapis.com/css2?family=Orbitron:wght@700;900&family=Rajdhani:wght@400;500;600;700&display=swap');
   @keyframes fadeUp { from{opacity:0;transform:translateY(16px)} to{opacity:1;transform:translateY(0)} }
   @keyframes spin { to{transform:rotate(360deg)} }
   .fade-up { animation: fadeUp .4s ease both; }
@@ -77,11 +77,8 @@ const MatchSchedule = () => {
 
   return (
     <div
-      className="min-h-screen relative overflow-x-hidden text-slate-200"
-      style={{
-        background: "#080c16",
-        fontFamily: "'Rajdhani','Segoe UI',sans-serif",
-      }}
+      className="min-h-[calc(100vh-80px)] w-full relative overflow-x-hidden text-slate-200 font-sans"
+      style={{ background: "#080c16" }}
     >
       <style>{STYLE}</style>
 
@@ -103,7 +100,7 @@ const MatchSchedule = () => {
         />
       </div>
 
-      <div className="relative z-10 max-w-4xl mx-auto px-4 sm:px-6 py-8">
+      <div className="relative z-10 max-w-4xl mx-auto p-8">
         {/* Header */}
         <div className="fade-up mb-6">
           <div className="flex items-center gap-2 mb-1">
@@ -115,14 +112,8 @@ const MatchSchedule = () => {
               Public
             </span>
           </div>
-          <h1
-            className="text-3xl font-black uppercase text-white"
-            style={{
-              fontFamily: "'Orbitron',monospace",
-              textShadow: "0 0 30px rgba(56,189,248,.3)",
-            }}
-          >
-            📅 Lịch Thi Đấu
+          <h1 className="text-3xl font-black italic tracking-wider text-transparent bg-clip-text bg-gradient-to-r from-cyan-400 to-blue-500 uppercase mb-1">
+            Lịch Thi Đấu
           </h1>
         </div>
 
@@ -136,8 +127,6 @@ const MatchSchedule = () => {
               background: "rgba(13,17,30,.9)",
               border: "1px solid rgba(56,189,248,.25)",
               color: "#38bdf8",
-              fontFamily: "'Orbitron',monospace",
-              fontSize: "0.75rem",
             }}
           >
             {seasons.map((s) => (
@@ -178,7 +167,7 @@ const MatchSchedule = () => {
             className="fade-up text-center py-20"
             style={{ color: "rgba(148,163,184,.4)" }}
           >
-            <div className="text-4xl mb-3">📭</div>
+            <CalendarOff size={36} className="mb-3 mx-auto text-slate-600" />
             <div className="text-sm">
               Không có trận đấu nào sắp diễn ra trong mùa này.
             </div>
@@ -200,7 +189,6 @@ const MatchSchedule = () => {
                     background: "rgba(56,189,248,.12)",
                     color: "#38bdf8",
                     border: "1px solid rgba(56,189,248,.25)",
-                    fontFamily: "'Orbitron',monospace",
                   }}
                 >
                   {date}
@@ -238,10 +226,7 @@ const MatchSchedule = () => {
 
                     {/* Team 1 */}
                     <div className="flex-1 text-right">
-                      <div
-                        className="font-black text-white text-lg"
-                        style={{ fontFamily: "'Orbitron',monospace" }}
-                      >
+                      <div className="font-black text-white text-lg">
                         {m.Team1Short}
                       </div>
                       <div
@@ -260,7 +245,6 @@ const MatchSchedule = () => {
                           background: "rgba(56,189,248,.1)",
                           color: "#38bdf8",
                           border: "1px solid rgba(56,189,248,.2)",
-                          fontFamily: "'Orbitron',monospace",
                         }}
                       >
                         {fmtTime(m.MatchDate) || "VS"}
@@ -291,10 +275,7 @@ const MatchSchedule = () => {
 
                     {/* Team 2 */}
                     <div className="flex-1">
-                      <div
-                        className="font-black text-white text-lg"
-                        style={{ fontFamily: "'Orbitron',monospace" }}
-                      >
+                      <div className="font-black text-white text-lg">
                         {m.Team2Short}
                       </div>
                       <div

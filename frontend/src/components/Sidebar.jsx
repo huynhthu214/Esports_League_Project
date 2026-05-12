@@ -1,6 +1,27 @@
 import React from "react";
 import { NavLink } from "react-router-dom";
 import { useAuth } from "../context/useAuth";
+import {
+  Home,
+  Trophy,
+  BarChart3,
+  Calendar,
+  Swords,
+  ArrowLeftRight,
+  LineChart,
+  TrendingDown,
+  Scale,
+  Flame,
+  Target,
+  FileText,
+  LayoutDashboard,
+  Shield,
+  Users,
+  Eye,
+  Settings,
+  Gamepad2,
+  CalendarDays,
+} from "lucide-react";
 
 const SectionLabel = ({ label, color = "text-slate-500", glow }) => (
   <p
@@ -16,7 +37,7 @@ const Sidebar = () => {
   if (!user) return null;
 
   const linkClass = ({ isActive }) =>
-    `flex items-center gap-3 px-3.5 py-2.5 rounded-xl text-sm font-semibold transition-all duration-200 border ${
+    `flex items-center gap-3 px-3.5 py-2.5 rounded-xl text-sm font-semibold transition-all duration-200 border [&_svg]:shrink-0 ${
       isActive
         ? "bg-cyan-500/12 text-cyan-200 border-cyan-400/35 shadow-[0_0_18px_rgba(34,211,238,0.14)]"
         : "text-slate-400 border-transparent hover:bg-slate-800/60 hover:text-slate-200 hover:border-slate-700/70"
@@ -29,22 +50,33 @@ const Sidebar = () => {
         <SectionLabel label="Dành cho Fan" color="text-cyan-500/60" />
         <div className="flex flex-col gap-1">
           <NavLink to="/" className={linkClass} end>
-            <span className="text-lg">🏠</span> Trang Chủ
+            <Home size={18} strokeWidth={2.2} />
+            Trang Chủ
           </NavLink>
+
           <NavLink to="/leaderboard/players" className={linkClass}>
-            <span className="text-lg">🏆</span> BXH Tuyển Thủ
+            <Trophy size={18} />
+            BXH Tuyển Thủ
           </NavLink>
+
           <NavLink to="/standings" className={linkClass}>
-            <span className="text-lg">📊</span> BXH Đội Tuyển
+            <BarChart3 size={18} />
+            BXH Đội Tuyển
           </NavLink>
+
           <NavLink to="/schedule" className={linkClass}>
-            <span className="text-lg">📅</span> Lịch Thi Đấu
+            <Calendar size={18} />
+            Lịch Thi Đấu
           </NavLink>
+
           <NavLink to="/matches" className={linkClass}>
-            <span className="text-lg">⚔️</span> Lịch Sử Trận Đấu
+            <Swords size={18} />
+            Lịch Sử Trận Đấu
           </NavLink>
+
           <NavLink to="/transfers" className={linkClass}>
-            <span className="text-lg">🔄</span> Chuyển Nhượng
+            <ArrowLeftRight size={18} />
+            Chuyển Nhượng
           </NavLink>
         </div>
       </div>
@@ -59,25 +91,46 @@ const Sidebar = () => {
           />
           <div className="flex flex-col gap-1">
             <NavLink to="/analyst" className={linkClass} end>
-              <span className="text-lg">📈</span> Dashboard
+              <span className="text-lg">
+                <LineChart size={18} />
+              </span>{" "}
+              Dashboard
             </NavLink>
             <NavLink to="/analyst/form" className={linkClass}>
-              <span className="text-lg">📉</span> Phong Độ Tuyển Thủ
+              <span className="text-lg">
+                <TrendingDown size={18} />
+              </span>{" "}
+              Phong Độ Tuyển Thủ
             </NavLink>
             <NavLink to="/analyst/compare" className={linkClass}>
-              <span className="text-lg">⚖️</span> So Sánh Tuyển Thủ
+              <span className="text-lg">
+                <Scale size={18} />
+              </span>{" "}
+              So Sánh Tuyển Thủ
             </NavLink>
             <NavLink to="/analyst/h2h" className={linkClass}>
-              <span className="text-lg">⚔️</span> Đối Đầu H2H
+              <span className="text-lg">
+                <Swords size={18} />
+              </span>{" "}
+              Đối Đầu H2H
             </NavLink>
             <NavLink to="/analyst/meta" className={linkClass}>
-              <span className="text-lg">🔥</span> Meta Tướng
+              <span className="text-lg">
+                <Flame size={18} />
+              </span>{" "}
+              Meta Tướng
             </NavLink>
             <NavLink to="/analyst/predict" className={linkClass}>
-              <span className="text-lg">🎯</span> Dự Đoán Trận
+              <span className="text-lg">
+                <Target size={18} />
+              </span>{" "}
+              Dự Đoán Trận
             </NavLink>
             <NavLink to="/analyst/report" className={linkClass}>
-              <span className="text-lg">📋</span> Báo Cáo Mùa
+              <span className="text-lg">
+                <FileText size={18} />
+              </span>{" "}
+              Báo Cáo Mùa
             </NavLink>
           </div>
         </div>
@@ -93,28 +146,52 @@ const Sidebar = () => {
           />
           <div className="flex flex-col gap-1">
             <NavLink to="/admin" className={linkClass} end>
-              <span className="text-lg">🛠️</span> Dashboard
+              <span className="text-lg">
+                <LayoutDashboard size={18} />
+              </span>{" "}
+              Dashboard
             </NavLink>
             <NavLink to="/admin/season" className={linkClass}>
-              <span className="text-lg">🗓️</span> Tạo Mùa Giải
+              <span className="text-lg">
+                <CalendarDays size={18} />
+              </span>{" "}
+              Tạo Mùa Giải
             </NavLink>
             <NavLink to="/admin/season-teams" className={linkClass}>
-              <span className="text-lg">🏟️</span> Đăng ký đội vào mùa
+              <span className="text-lg">
+                <Shield size={18} />
+              </span>{" "}
+              Đăng ký đội vào mùa
             </NavLink>
             <NavLink to="/admin/roster" className={linkClass}>
-              <span className="text-lg">👥</span> Đăng Ký Roster
+              <span className="text-lg">
+                <Users size={18} />
+              </span>{" "}
+              Đăng Ký Roster
             </NavLink>
             <NavLink to="/admin/roster-view" className={linkClass}>
-              <span className="text-lg">👁️</span> Xem Roster
+              <span className="text-lg">
+                <Eye size={18} />
+              </span>{" "}
+              Xem Roster
             </NavLink>
             <NavLink to="/admin/transfer" className={linkClass}>
-              <span className="text-lg">🔄</span> Chuyển Nhượng
+              <span className="text-lg">
+                <ArrowLeftRight size={18} />
+              </span>{" "}
+              Chuyển Nhượng
             </NavLink>
             <NavLink to="/admin/match" className={linkClass}>
-              <span className="text-lg">🎮</span> Nhập Kết Quả
+              <span className="text-lg">
+                <Gamepad2 size={18} />
+              </span>{" "}
+              Nhập Kết Quả
             </NavLink>
             <NavLink to="/admin/players" className={linkClass}>
-              <span className="text-lg">⚙️</span> Quản Lý Tuyển Thủ
+              <span className="text-lg">
+                <Settings size={18} />
+              </span>{" "}
+              Quản Lý Tuyển Thủ
             </NavLink>
           </div>
         </div>

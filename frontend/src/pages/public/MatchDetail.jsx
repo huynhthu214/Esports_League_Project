@@ -1,6 +1,7 @@
 import { useState, useEffect } from "react";
 import { useParams, useNavigate } from "react-router-dom";
 import axiosClient from "../../api/axiosClient";
+import { AlertCircle, MapPin } from "lucide-react";
 
 const POSITION_COLOR = {
   Top: "bg-red-500/20 text-red-400 border-red-500/30",
@@ -52,7 +53,7 @@ const MatchDetail = () => {
   if (error || !detail)
     return (
       <div className="min-h-[calc(100vh-80px)] flex flex-col items-center justify-center bg-[#050c18] text-slate-400 gap-4">
-        <div className="text-5xl">😕</div>
+        <AlertCircle size={40} className="text-slate-600 mx-auto" />
         <p>{error || "Không có dữ liệu cho trận này."}</p>
         <button
           onClick={() => navigate("/matches")}
@@ -79,7 +80,7 @@ const MatchDetail = () => {
       : "—";
 
   return (
-    <div className="min-h-[calc(100vh-80px)] h-full flex-1 w-full bg-[#050c18] text-slate-200 p-6 font-sans relative overflow-hidden">
+    <div className="min-h-[calc(100vh-80px)] h-full flex-1 w-full bg-[#050c18] text-slate-200 p-6 relative overflow-hidden">
       <div className="absolute top-0 inset-x-0 h-1 bg-gradient-to-r from-red-500 via-orange-500 to-red-500"></div>
       <div className="absolute top-[-10%] left-[-5%] w-[400px] h-[400px] bg-red-500/6 rounded-full blur-[130px] pointer-events-none"></div>
 
@@ -100,7 +101,7 @@ const MatchDetail = () => {
             </div>
             <div className="text-sm text-slate-400">
               {formatDate(detail.match_date)}{" "}
-              {detail.venue ? `· 📍 ${detail.venue}` : ""}
+              {detail.venue ? `· ${detail.venue}` : ""}
             </div>
             {detail.format && (
               <div className="text-xs text-slate-600 mt-1">
@@ -119,7 +120,6 @@ const MatchDetail = () => {
                 <div
                   className={`text-2xl font-black mb-1 ${team.result === "WIN" ? "text-emerald-400" : "text-slate-500"}`}
                 >
-                  {team.result === "WIN" ? "🏆 " : ""}
                   {team.team_id}
                 </div>
                 <div
@@ -147,7 +147,7 @@ const MatchDetail = () => {
               <h2
                 className={`text-xl font-black ${team.result === "WIN" ? "text-emerald-400" : "text-slate-400"}`}
               >
-                {team.result === "WIN" ? "🏆" : "💀"} {team.team_id}
+                {team.team_id}
               </h2>
               <span
                 className={`text-xs font-bold px-3 py-1 rounded-full border ${team.result === "WIN" ? "bg-emerald-500/15 text-emerald-400 border-emerald-500/30" : "bg-slate-800 text-slate-500 border-slate-700"}`}

@@ -2,6 +2,16 @@ import { Link } from "react-router-dom";
 import { useAuth } from "../../context/useAuth";
 import { useEffect, useRef, useState } from "react";
 import axiosClient from "../../api/axiosClient";
+import {
+  BarChart3,
+  CalendarDays,
+  Flame,
+  Gamepad2,
+  Lock,
+  Swords,
+  TrendingUp,
+  Trophy,
+} from "lucide-react";
 
 const ROLE_COLOR = {
   Top: "#fb923c",
@@ -371,25 +381,25 @@ const Home = () => {
               {/* Stats */}
               <div className="grid grid-cols-2 gap-3 w-full lg:w-auto lg:min-w-[320px]">
                 <StatCard
-                  icon="🏆"
+                  icon={<Trophy size={22} />}
                   label="Đội tham gia"
                   value={loading ? "—" : String(counts?.TotalTeams ?? 0)}
                   accent="#38bdf8"
                 />
                 <StatCard
-                  icon="⚔️"
+                  icon={<Swords size={22} />}
                   label="Trận đã đấu"
                   value={loading ? "—" : String(counts?.TotalMatches ?? 0)}
                   accent="#a78bfa"
                 />
                 <StatCard
-                  icon="🎮"
+                  icon={<Gamepad2 size={22} />}
                   label="Tuyển thủ"
                   value={loading ? "—" : String(counts?.TotalPlayers ?? 0)}
                   accent="#34d399"
                 />
                 <StatCard
-                  icon="📅"
+                  icon={<CalendarDays size={22} />}
                   label="Chuyển nhượng"
                   value={loading ? "—" : String(counts?.TotalTransfers ?? 0)}
                   accent="#fb923c"
@@ -529,14 +539,14 @@ const Home = () => {
               <div className="grid sm:grid-cols-2 gap-3">
                 <QuickLink
                   to="/leaderboard/players"
-                  icon="🏆"
+                  icon={<Trophy size={22} />}
                   accent="#38bdf8"
                   title="Bảng Xếp Hạng KDA"
                   desc="Top tuyển thủ xuất sắc nhất theo KDA, GPM và các chỉ số toàn mùa."
                 />
                 <QuickLink
                   to="/standings"
-                  icon="📊"
+                  icon={<BarChart3 size={22} />}
                   accent="#a78bfa"
                   title="Xếp Hạng Đội Tuyển"
                   desc="Bảng điểm, tỷ lệ thắng/thua và phong độ từng đội trong mùa giải."
@@ -545,14 +555,14 @@ const Home = () => {
                   <>
                     <QuickLink
                       to="/analyst/form"
-                      icon="📈"
+                      icon={<TrendingUp size={22} />}
                       accent="#34d399"
                       title="Phong Độ Tuyển Thủ"
                       desc="Phân tích form 50 trận gần nhất, xu hướng tăng/giảm hiệu suất."
                     />
                     <QuickLink
                       to="/analyst/meta"
-                      icon="🧠"
+                      icon={<Flame size={22} />}
                       accent="#fb923c"
                       title="Meta Tướng Mùa Này"
                       desc="Tướng pick/ban nhiều nhất và win-rate theo vị trí thi đấu."
@@ -626,7 +636,7 @@ const Home = () => {
                             fontFamily: "'Orbitron', monospace",
                           }}
                         >
-                          {rank === 1 ? "👑" : `#${rank}`}
+                          {`#${rank}`}
                         </div>
                         {/* Avatar placeholder */}
                         <div
@@ -687,7 +697,7 @@ const Home = () => {
                         "radial-gradient(circle at 100% 0%, #38bdf8, transparent 60%)",
                     }}
                   />
-                  <div className="text-2xl mb-2">🔐</div>
+                  <Lock size={24} className="mb-2 mx-auto text-slate-500" />
                   <div
                     className="font-bold text-white mb-1 text-sm"
                     style={{ fontFamily: "'Orbitron', monospace" }}

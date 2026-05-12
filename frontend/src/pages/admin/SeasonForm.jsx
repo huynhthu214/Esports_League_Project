@@ -1,5 +1,11 @@
 import { useState } from "react";
 import axiosClient from "../../api/axiosClient";
+import { Eye } from "lucide-react";
+
+const STYLE = `
+  @keyframes dot-blink { 0%,100%{opacity:1} 50%{opacity:.3} }
+  .dot-blink { animation: dot-blink 1.8s ease infinite; }
+`;
 
 const SeasonForm = () => {
   const [form, setForm] = useState({
@@ -94,7 +100,8 @@ const SeasonForm = () => {
   };
 
   return (
-    <div className="flex-1 w-full h-full min-h-[calc(100vh-70px)] bg-[#0b1120] text-slate-200 p-8 font-sans relative">
+    <div className="flex-1 w-full h-full min-h-[calc(100vh-70px)] bg-[#0b1120] text-slate-200 p-8 relative font-sans">
+      <style>{STYLE}</style>
       {/* TOAST NOTIFICATION GỌN NHẸ HƠN */}
       <div
         className={`fixed top-6 right-6 z-50 min-w-[300px] max-w-sm backdrop-blur-xl bg-slate-900/90 rounded-lg p-4 shadow-2xl border-l-4 transition-all duration-300 flex items-center gap-3 ${
@@ -122,11 +129,10 @@ const SeasonForm = () => {
 
       <div className="max-w-3xl mx-auto">
         <h1 className="text-3xl font-black italic tracking-wider text-transparent bg-clip-text bg-gradient-to-r from-emerald-400 to-cyan-500 uppercase mb-2">
-          📅 Tạo Mùa Giải
+          Tạo Mùa Giải
         </h1>
         <p className="text-sm text-slate-400 mb-8 font-medium">
-          Khởi tạo dữ liệu giải đấu mới vào cơ sở dữ liệu. (Giới hạn tối đa 180
-          ngày/mùa)
+          Khởi tạo thông tin giải đấu mới. (Giới hạn tối đa 180 ngày/mùa)
         </p>
 
         <form
@@ -224,12 +230,12 @@ const SeasonForm = () => {
 
           {form.seasonId && form.seasonName && (
             <div className="bg-cyan-900/10 border border-cyan-500/20 rounded-xl p-4 text-sm text-cyan-300 flex items-center gap-3 transition-all">
-              <span className="text-2xl">👀</span>
+              <Eye size={18} className="text-slate-400" />
               <div>
                 <strong>Preview:</strong> [{form.seasonId.toUpperCase()}]{" "}
                 {form.seasonName} <br />
                 <span className="text-xs text-cyan-500">
-                  {form.startDate || "..."} ➝ {form.endDate || "..."}
+                  {form.startDate || "..."} → {form.endDate || "..."}
                 </span>
               </div>
             </div>

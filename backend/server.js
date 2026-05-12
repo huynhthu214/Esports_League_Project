@@ -23,7 +23,7 @@ app.use(express.urlencoded({ extended: true }));
 
 app.get("/", (req, res) => {
   res.send(`
-    <h1>🎉 Esports League Backend đang chạy ngon!</h1>
+    <h1>🎉 Esports League Backend đang chạy!</h1>
     <p>✅ MSSQL | ✅ MongoDB | Port: 5000</p>
     <hr>
     

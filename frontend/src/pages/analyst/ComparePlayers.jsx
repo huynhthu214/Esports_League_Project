@@ -25,7 +25,6 @@ ChartJS.register(
 );
 
 const STYLE = `
-  @import url('https://fonts.googleapis.com/css2?family=Orbitron:wght@700;900&family=Rajdhani:wght@400;500;600;700&display=swap');
   @keyframes fadeUp { from{opacity:0;transform:translateY(16px)} to{opacity:1;transform:translateY(0)} }
   @keyframes spin { to{transform:rotate(360deg)} }
   .fade-up { animation: fadeUp .4s ease both; }
@@ -87,12 +86,12 @@ const ComparePlayers = () => {
         const missing = [p1, p2].filter((id) => !ids.has(String(id)));
 
         if (rows.length === 0) {
-          setError("Không có dữ liệu MongoDB cho 2 tuyển thủ này.");
+          setError("Không có dữ liệu cho 2 tuyển thủ này.");
           return;
         }
         if (missing.length > 0) {
           setError(
-            `Thiếu dữ liệu MongoDB cho: ${missing.join(
+            `Thiếu dữ liệu cho: ${missing.join(
               ", ",
             )}. Hãy nhập match_stats cho tuyển thủ này trước.`,
           );
@@ -133,8 +132,7 @@ const ComparePlayers = () => {
       .get("/analytics/compare-teams", { params: { team1: p1, team2: p2 } })
       .then((r) => {
         const rows = Array.isArray(r.data) ? r.data : [];
-        if (rows.length === 0)
-          setError("Không có dữ liệu MongoDB cho 2 đội này.");
+        if (rows.length === 0) setError("Không có dữ liệu cho 2 đội này.");
         else setResult(rows);
       })
       .catch(() => setError("Không tải được dữ liệu so kèo đội."))
@@ -160,10 +158,9 @@ const ComparePlayers = () => {
 
   return (
     <div
-      className="min-h-screen relative overflow-x-hidden text-slate-200"
+      className="min-h-[calc(100vh-80px)] w-full relative overflow-x-hidden text-slate-200 font-sans"
       style={{
         background: "#080c16",
-        fontFamily: "'Rajdhani','Segoe UI',sans-serif",
       }}
     >
       <style>{STYLE}</style>
@@ -184,7 +181,7 @@ const ComparePlayers = () => {
           }}
         />
       </div>
-      <div className="relative z-10 max-w-4xl mx-auto px-4 sm:px-6 py-8">
+      <div className="relative z-10 max-w-4xl mx-auto p-8">
         <div className="fade-up mb-6">
           <div className="flex items-center gap-2 mb-1">
             <div className="w-2 h-2 rounded-full bg-purple-400 animate-pulse" />
@@ -192,42 +189,15 @@ const ComparePlayers = () => {
               className="text-xs font-bold uppercase tracking-[0.25em]"
               style={{ color: "rgba(167,139,250,.7)" }}
             >
-              MongoDB
+              Phân tích
             </span>
           </div>
-          <h1
-            className="text-3xl font-black uppercase text-white"
-            style={{ fontFamily: "'Orbitron',monospace" }}
-          >
-            ⚖️ So Kèo Trực Diện
+          <h1 className="text-3xl font-black italic tracking-wider text-transparent bg-clip-text bg-gradient-to-r from-purple-400 to-cyan-500 uppercase mb-1">
+            So Kèo Trực Diện
           </h1>
-          {externalStatus?.providers && (
-            <div
-              className="text-xs mt-2"
-              style={{ color: "rgba(148,163,184,.55)" }}
-            >
-              External API: PandaScore{" "}
-              <b
-                style={{
-                  color: externalStatus.providers.pandascore.configured
-                    ? "#34d399"
-                    : "#f87171",
-                }}
-              >
-                {externalStatus.providers.pandascore.configured ? "ON" : "OFF"}
-              </b>{" "}
-              · Abios{" "}
-              <b
-                style={{
-                  color: externalStatus.providers.abios.configured
-                    ? "#34d399"
-                    : "#f87171",
-                }}
-              >
-                {externalStatus.providers.abios.configured ? "ON" : "OFF"}
-              </b>
-            </div>
-          )}
+          <p className="text-sm text-slate-400 mt-1">
+            So sánh trực tiếp 2 tuyển thủ hoặc 2 đội tuyển dựa trên dữ liệu
+          </p>
         </div>
 
         {/* Mode tabs */}
@@ -256,7 +226,6 @@ const ComparePlayers = () => {
                     ? "1px solid rgba(167,139,250,.35)"
                     : "1px solid rgba(148,163,184,.15)",
                 color: mode === k ? "#a78bfa" : "rgba(148,163,184,.7)",
-                fontFamily: "'Orbitron',monospace",
                 fontSize: "0.68rem",
               }}
             >
@@ -273,8 +242,18 @@ const ComparePlayers = () => {
         >
           <div className="grid sm:grid-cols-2 gap-3 mb-3">
             {[
-              [p1, setP1, "#38bdf8", "Tuyển thủ 1"],
-              [p2, setP2, "#f87171", "Tuyển thủ 2"],
+              [
+                p1,
+                setP1,
+                "#38bdf8",
+                mode === "players" ? "Tuyển thủ 1" : "Đội tuyển 1",
+              ],
+              [
+                p2,
+                setP2,
+                "#f87171",
+                mode === "players" ? "Tuyển thủ 2" : "Đội tuyển 2",
+              ],
             ].map(([val, set, color, label]) => (
               <div key={label}>
                 <div
@@ -291,8 +270,6 @@ const ComparePlayers = () => {
                     background: "rgba(0,0,0,.4)",
                     border: `1px solid ${color}30`,
                     color,
-                    fontFamily: "'Orbitron',monospace",
-                    fontSize: "0.72rem",
                   }}
                 >
                   <option value="">-- Chọn --</option>
@@ -317,8 +294,6 @@ const ComparePlayers = () => {
             style={{
               background: "linear-gradient(135deg,#7c3aed,#a78bfa)",
               boxShadow: "0 0 18px rgba(167,139,250,.3)",
-              fontFamily: "'Orbitron',monospace",
-              fontSize: "0.7rem",
             }}
           >
             {loading ? <span className="spinner" /> : "So Sánh"}
@@ -348,10 +323,7 @@ const ComparePlayers = () => {
               className="grid grid-cols-3 text-center py-4 px-5"
               style={{ borderBottom: "1px solid rgba(167,139,250,.1)" }}
             >
-              <div
-                className="font-black text-sm"
-                style={{ color: "#38bdf8", fontFamily: "'Orbitron',monospace" }}
-              >
+              <div className="font-black text-sm" style={{ color: "#38bdf8" }}>
                 {mode === "players"
                   ? p1info.Nickname || p1
                   : p1info.ShortName || p1info.TeamName || p1}
@@ -362,10 +334,7 @@ const ComparePlayers = () => {
               >
                 VS
               </div>
-              <div
-                className="font-black text-sm"
-                style={{ color: "#f87171", fontFamily: "'Orbitron',monospace" }}
-              >
+              <div className="font-black text-sm" style={{ color: "#f87171" }}>
                 {mode === "players"
                   ? p2info.Nickname || p2
                   : p2info.ShortName || p2info.TeamName || p2}
@@ -449,7 +418,6 @@ const ComparePlayers = () => {
                       background: "rgba(0,0,0,.25)",
                       border: "1px solid rgba(148,163,184,.15)",
                       color: "rgba(226,232,240,.9)",
-                      fontFamily: "'Orbitron',monospace",
                     }}
                     disabled={mode !== "players"}
                   >
@@ -533,7 +501,6 @@ const ComparePlayers = () => {
                         className="font-black text-sm"
                         style={{
                           color: b === 1 ? "#34d399" : "rgba(148,163,184,.6)",
-                          fontFamily: "'Orbitron',monospace",
                         }}
                       >
                         {Number(v1).toFixed(1)}
@@ -575,7 +542,6 @@ const ComparePlayers = () => {
                         className="font-black text-sm"
                         style={{
                           color: b === 2 ? "#34d399" : "rgba(148,163,184,.6)",
-                          fontFamily: "'Orbitron',monospace",
                         }}
                       >
                         {b === 2 ? "✓ " : ""}

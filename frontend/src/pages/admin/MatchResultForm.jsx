@@ -1,7 +1,99 @@
 import { useState, useEffect, useCallback } from "react";
 import axiosClient from "../../api/axiosClient";
+import { Info, Trophy, BarChart3 } from "lucide-react";
+
+const STYLE = `
+  @keyframes dot-blink { 0%,100%{opacity:1} 50%{opacity:.3} }
+  .dot-blink { animation: dot-blink 1.8s ease infinite; }
+`;
+
+// Danh sách tướng Liên Quân Mobile (pool phổ biến trong esports)
+const LIEN_QUAN_HEROES = [
+  // Tank / Support
+  "Thane",
+  "Baldum",
+  "Lumburr",
+  "Omega",
+  "Grakk",
+  "Ormarr",
+  "Arum",
+  "Teemee",
+  "Cresht",
+  "Rouie",
+  "Gildur",
+  "Kaja",
+  "Alice",
+  // Fighter / Bruiser
+  "Zephys",
+  "Nakroth",
+  "Omen",
+  "Skud",
+  "Maloch",
+  "Qi",
+  "Florentino",
+  "Riktor",
+  "Aoi",
+  "Chou",
+  "Lu Bu",
+  "Lauriel",
+  "Tulen",
+  "Hayate",
+  "Veres",
+  "Murad",
+  "Wukong",
+  "Kriknak",
+  // Mage
+  "Liliana",
+  "Ignis",
+  "Natalya",
+  "Ishar",
+  "Kahlii",
+  "Dirak",
+  "Mganga",
+  "Zata",
+  "Raz",
+  "Elsu (mid)",
+  "Veera",
+  "Annette",
+  "Harith",
+  "Sophitia",
+  "Aleister",
+  // Marksman
+  "Tel'Annas",
+  "Violet",
+  "Elsu",
+  "Yorn",
+  "Wisp",
+  "Laville",
+  "Mina",
+  "Payna",
+  "Slimz",
+  "Astrid",
+  // Assassin
+  "Kil'groth",
+  "Alucard",
+  "Ryoma",
+  "Taara",
+  "Ino",
+  "Butterfly",
+  "Lindis",
+  "Keera",
+  "Paine",
+  "D'Arcy",
+  "Jinnar",
+].sort();
 
 const POSITIONS = ["Top", "Jungle", "Mid", "ADC", "Support"];
+
+// Gold thực tế Liên Quân: 8,000 – 18,000 gold/trận tùy vị trí
+const DEFAULT_GOLD_BY_POS = {
+  Top: 12000,
+  Jungle: 11000,
+  Mid: 13000,
+  ADC: 14000,
+  Support: 8000,
+};
+
 const defaultPlayer = (pos) => ({
   player_id: "",
   position: pos,
@@ -9,7 +101,7 @@ const defaultPlayer = (pos) => ({
   kills: 0,
   deaths: 0,
   assists: 0,
-  gold: 0,
+  gold: DEFAULT_GOLD_BY_POS[pos] ?? 10000,
 });
 const defaultTeam = () => POSITIONS.map((p) => defaultPlayer(p));
 
@@ -133,19 +225,25 @@ const MatchResultForm = () => {
       });
   }, [form.team2_id, form.season_id]);
 
-  // Auto-generate match_id
+  // Auto match_id + auto winner tu ti so
   const handleFormChange = (e) => {
     const { name, value } = e.target;
     setForm((prev) => {
       const next = { ...prev, [name]: value };
+      // Auto match_id
       if (["season_id", "team1_id", "team2_id", "match_date"].includes(name)) {
         const sid = name === "season_id" ? value : prev.season_id;
         const t1 = name === "team1_id" ? value : prev.team1_id;
         const t2 = name === "team2_id" ? value : prev.team2_id;
         const date = name === "match_date" ? value : prev.match_date;
-        if (sid && t1 && t2) {
+        if (sid && t1 && t2)
           next.match_id = `${sid}_${t1}vs${t2}_${date.replace(/-/g, "")}`;
-        }
+      }
+      // Auto winner tu ti so
+      if (["team1_score", "team2_score"].includes(name)) {
+        const s1 = Number(name === "team1_score" ? value : prev.team1_score);
+        const s2 = Number(name === "team2_score" ? value : prev.team2_score);
+        if (s1 !== s2) next.winner = s1 > s2 ? "1" : "2";
       }
       return next;
     });
@@ -158,9 +256,11 @@ const MatchResultForm = () => {
         i === idx
           ? {
               ...p,
-              [field]: ["kills", "deaths", "assists", "gold"].includes(field)
+              [field]: ["kills", "deaths", "assists"].includes(field)
                 ? parseInt(value) || 0
-                : value,
+                : field === "gold"
+                  ? parseInt(value) || 0 // gold co the den 18000+
+                  : value,
             }
           : p,
       ),
@@ -178,12 +278,22 @@ const MatchResultForm = () => {
       return;
     }
     setLoading(true);
-    const winTeamId = form.winner === "1" ? form.team1_id : form.team2_id;
-    const loseTeamId = form.winner === "1" ? form.team2_id : form.team1_id;
-    const winScore =
-      form.winner === "1" ? Number(form.team1_score) : Number(form.team2_score);
-    const loseScore =
-      form.winner === "1" ? Number(form.team2_score) : Number(form.team1_score);
+    // Winner luôn được tính từ tỉ số tại lúc submit, không tin vào state form.winner
+    const s1 = Number(form.team1_score);
+    const s2 = Number(form.team2_score);
+    if (s1 === s2) {
+      setStatus({
+        type: "error",
+        text: "❌ Tỉ số hòa không hợp lệ trong thể thức BO!",
+      });
+      setLoading(false);
+      return;
+    }
+    const derivedWinner = s1 > s2 ? "1" : "2";
+    const winTeamId = derivedWinner === "1" ? form.team1_id : form.team2_id;
+    const loseTeamId = derivedWinner === "1" ? form.team2_id : form.team1_id;
+    const winScore = derivedWinner === "1" ? s1 : s2;
+    const loseScore = derivedWinner === "1" ? s2 : s1;
     const payload = {
       match_id: form.match_id || `M_${Date.now()}`,
       season_id: form.season_id,
@@ -191,14 +301,14 @@ const MatchResultForm = () => {
       teams: [
         {
           team_id: form.team1_id,
-          result: form.winner === "1" ? "WIN" : "LOSS",
-          score: Number(form.team1_score),
+          result: derivedWinner === "1" ? "WIN" : "LOSS",
+          score: s1,
           players: team1Players,
         },
         {
           team_id: form.team2_id,
-          result: form.winner === "2" ? "WIN" : "LOSS",
-          score: Number(form.team2_score),
+          result: derivedWinner === "2" ? "WIN" : "LOSS",
+          score: s2,
           players: team2Players,
         },
       ],
@@ -246,6 +356,7 @@ const MatchResultForm = () => {
     const posRoster = roster.filter((r) => r.Position === player.position);
     return (
       <div className="grid grid-cols-8 gap-2 items-center py-2 border-b border-slate-800/60 last:border-0">
+        {/* Cột 1-2: Chọn tuyển thủ */}
         <div className="col-span-2">
           <select
             value={player.player_id}
@@ -260,16 +371,27 @@ const MatchResultForm = () => {
             ))}
           </select>
         </div>
-        <input
+
+        {/* Cột 3: Dropdown tướng Liên Quân */}
+        <select
           className={mini}
-          placeholder="Tướng"
           value={player.hero}
           onChange={(e) => setter("hero", e.target.value)}
-        />
+        >
+          <option value="">-- Tướng --</option>
+          {LIEN_QUAN_HEROES.map((h) => (
+            <option key={h} value={h}>
+              {h}
+            </option>
+          ))}
+        </select>
+
+        {/* K D A */}
         <input
           className={mini}
           type="number"
           min="0"
+          max="30"
           placeholder="K"
           value={player.kills}
           onChange={(e) => setter("kills", e.target.value)}
@@ -278,6 +400,7 @@ const MatchResultForm = () => {
           className={mini}
           type="number"
           min="0"
+          max="30"
           placeholder="D"
           value={player.deaths}
           onChange={(e) => setter("deaths", e.target.value)}
@@ -286,19 +409,25 @@ const MatchResultForm = () => {
           className={mini}
           type="number"
           min="0"
+          max="30"
           placeholder="A"
           value={player.assists}
           onChange={(e) => setter("assists", e.target.value)}
         />
+
+        {/* Gold: đầu vào thực tế, step 100 */}
         <input
           className={mini}
           type="number"
-          min="0"
-          placeholder="Gold"
+          min="5000"
+          max="25000"
+          step="100"
+          title="Gold trong trận (Liên Quân: ~8k–18k)"
           value={player.gold}
           onChange={(e) => setter("gold", e.target.value)}
         />
-        <div className="text-xs text-slate-600 text-center">
+
+        <div className="text-xs text-slate-500 text-center font-medium">
           {player.position}
         </div>
       </div>
@@ -307,14 +436,11 @@ const MatchResultForm = () => {
 
   return (
     <div className="min-h-[calc(100vh-80px)] w-full bg-[#0b1120] text-slate-200 p-8 font-sans">
+      <style>{STYLE}</style>
       <div className="max-w-5xl mx-auto">
         <h1 className="text-3xl font-black italic tracking-wider text-transparent bg-clip-text bg-gradient-to-r from-purple-400 to-pink-500 uppercase mb-1">
-          🎮 Nhập Kết Quả Trận Đấu
+          Nhập Kết Quả Trận Đấu
         </h1>
-        <p className="text-sm text-slate-400 mb-8">
-          Dual-write vào MongoDB + SQL Server · Chọn mùa → đội tự lọc → player
-          tự điền theo roster
-        </p>
 
         {status && (
           <div
@@ -328,7 +454,7 @@ const MatchResultForm = () => {
           {/* ── Thông tin trận ── */}
           <div className="bg-slate-900/60 border border-slate-800 rounded-2xl p-6">
             <h3 className="text-xs font-bold text-slate-500 uppercase tracking-widest mb-4">
-              📋 Thông tin trận đấu
+              Thông tin trận đấu
             </h3>
             <div className="grid sm:grid-cols-3 gap-4">
               <div>
@@ -410,7 +536,7 @@ const MatchResultForm = () => {
           {/* ── Kết quả ── */}
           <div className="bg-slate-900/60 border border-slate-800 rounded-2xl p-6">
             <h3 className="text-xs font-bold text-slate-500 uppercase tracking-widest mb-4">
-              🏆 Kết quả trận đấu
+              Kết quả trận đấu
             </h3>
             <div className="grid grid-cols-5 gap-4 items-end">
               {/* Đội 1 */}
@@ -466,29 +592,28 @@ const MatchResultForm = () => {
                     className="w-12 text-center bg-slate-800 border border-slate-700 text-white rounded-lg py-1.5 text-sm font-bold focus:outline-none"
                   />
                 </div>
-                <select
-                  name="winner"
-                  value={form.winner}
-                  onChange={handleFormChange}
-                  className="text-xs bg-emerald-900/30 border border-emerald-500/30 text-emerald-400 rounded-lg px-2 py-1.5 focus:outline-none font-bold"
-                >
-                  <option value="1">
-                    🏆{" "}
-                    {form.team1_id
+                {/* Winner badge: tự động phân từ tỉ số */}
+                {(() => {
+                  const s1 = Number(form.team1_score);
+                  const s2 = Number(form.team2_score);
+                  const winnerName =
+                    s1 > s2
                       ? seasonTeams.find((t) => t.TeamID === form.team1_id)
                           ?.ShortName || "Đội 1"
-                      : "Đội 1"}{" "}
-                    thắng
-                  </option>
-                  <option value="2">
-                    🏆{" "}
-                    {form.team2_id
-                      ? seasonTeams.find((t) => t.TeamID === form.team2_id)
-                          ?.ShortName || "Đội 2"
-                      : "Đội 2"}{" "}
-                    thắng
-                  </option>
-                </select>
+                      : s2 > s1
+                        ? seasonTeams.find((t) => t.TeamID === form.team2_id)
+                            ?.ShortName || "Đội 2"
+                        : null;
+                  return winnerName ? (
+                    <div className="text-xs bg-emerald-900/40 border border-emerald-500/40 text-emerald-400 rounded-lg px-3 py-2 font-black text-center">
+                      {winnerName} thắng
+                    </div>
+                  ) : (
+                    <div className="text-xs text-slate-600 text-center">
+                      Nhập tỉ số ↑
+                    </div>
+                  );
+                })()}
               </div>
 
               {/* Đội 2 */}
@@ -526,7 +651,7 @@ const MatchResultForm = () => {
           {form.team1_id && (
             <div className="bg-slate-900/60 border border-slate-800 rounded-2xl p-6">
               <h3 className="text-xs font-bold text-slate-500 uppercase tracking-widest mb-1">
-                📊 Stats — {team1Name}
+                Stats — {team1Name}
               </h3>
               <p className="text-xs text-slate-600 mb-4">
                 Player tự điền theo roster · chỉnh tay nếu cần
@@ -537,7 +662,7 @@ const MatchResultForm = () => {
                 <div>K</div>
                 <div>D</div>
                 <div>A</div>
-                <div>Gold</div>
+                <div title="Gold trong trận (8k–18k)">Gold</div>
                 <div>Vị trí</div>
               </div>
               {team1Players.map((p, i) => (
@@ -556,7 +681,7 @@ const MatchResultForm = () => {
           {form.team2_id && (
             <div className="bg-slate-900/60 border border-slate-800 rounded-2xl p-6">
               <h3 className="text-xs font-bold text-slate-500 uppercase tracking-widest mb-1">
-                📊 Stats — {team2Name}
+                Stats — {team2Name}
               </h3>
               <p className="text-xs text-slate-600 mb-4">
                 Player tự điền theo roster · chỉnh tay nếu cần
@@ -567,7 +692,7 @@ const MatchResultForm = () => {
                 <div>K</div>
                 <div>D</div>
                 <div>A</div>
-                <div>Gold</div>
+                <div title="Gold trong trận (8k–18k)">Gold</div>
                 <div>Vị trí</div>
               </div>
               {team2Players.map((p, i) => (
@@ -589,9 +714,7 @@ const MatchResultForm = () => {
             }
             className="w-full bg-gradient-to-r from-purple-600 to-pink-600 hover:from-purple-500 hover:to-pink-500 text-white rounded-lg py-4 text-sm font-black tracking-widest uppercase disabled:opacity-40 disabled:cursor-not-allowed transition-all"
           >
-            {loading
-              ? "⏳ Đang ghi vào MongoDB & SQL..."
-              : "GHI NHẬN KẾT QUẢ TRẬN ĐẤU"}
+            {loading ? "⏳ Đang xử lý..." : "GHI NHẬN KẾT QUẢ TRẬN ĐẤU"}
           </button>
         </form>
       </div>

@@ -1,8 +1,8 @@
 import { useState, useEffect } from "react";
 import axiosClient from "../../api/axiosClient";
+import { ArrowLeftRight } from "lucide-react";
 
 const STYLE = `
-  @import url('https://fonts.googleapis.com/css2?family=Orbitron:wght@700;900&family=Rajdhani:wght@400;500;600;700&display=swap');
   @keyframes fadeUp { from{opacity:0;transform:translateY(16px)} to{opacity:1;transform:translateY(0)} }
   @keyframes spin { to{transform:rotate(360deg)} }
   .fade-up { animation: fadeUp .4s ease both; }
@@ -71,11 +71,8 @@ const TransferHistory = () => {
 
   return (
     <div
-      className="min-h-screen relative overflow-x-hidden text-slate-200"
-      style={{
-        background: "#080c16",
-        fontFamily: "'Rajdhani','Segoe UI',sans-serif",
-      }}
+      className="min-h-[calc(100vh-80px)] w-full relative overflow-x-hidden text-slate-200 font-sans"
+      style={{ background: "#080c16" }}
     >
       <style>{STYLE}</style>
 
@@ -97,7 +94,7 @@ const TransferHistory = () => {
         />
       </div>
 
-      <div className="relative z-10 max-w-5xl mx-auto px-4 sm:px-6 py-8">
+      <div className="relative z-10 max-w-5xl mx-auto p-8">
         {/* Header */}
         <div className="fade-up mb-6">
           <div className="flex items-center gap-2 mb-1">
@@ -109,14 +106,8 @@ const TransferHistory = () => {
               Chuyển Nhượng
             </span>
           </div>
-          <h1
-            className="text-3xl font-black uppercase text-white"
-            style={{
-              fontFamily: "'Orbitron',monospace",
-              textShadow: "0 0 30px rgba(52,211,153,.3)",
-            }}
-          >
-            🔄 Lịch Sử Chuyển Nhượng
+          <h1 className="text-3xl font-black italic tracking-wider text-transparent bg-clip-text bg-gradient-to-r from-emerald-400 to-cyan-500 uppercase mb-1">
+            Lịch Sử Chuyển Nhượng
           </h1>
         </div>
 
@@ -130,8 +121,6 @@ const TransferHistory = () => {
               background: "rgba(13,17,30,.9)",
               border: "1px solid rgba(52,211,153,.25)",
               color: "#34d399",
-              fontFamily: "'Orbitron',monospace",
-              fontSize: "0.75rem",
             }}
           >
             {seasons.map((s) => (
@@ -196,12 +185,7 @@ const TransferHistory = () => {
                   border: `1px solid ${s.color}22`,
                 }}
               >
-                <div
-                  className="text-xl font-black text-white"
-                  style={{ fontFamily: "'Orbitron',monospace" }}
-                >
-                  {s.value}
-                </div>
+                <div className="text-xl font-black text-white">{s.value}</div>
                 <div
                   className="text-xs mt-0.5"
                   style={{ color: "rgba(148,163,184,.5)" }}
@@ -218,7 +202,7 @@ const TransferHistory = () => {
             className="fade-up text-center py-20"
             style={{ color: "rgba(148,163,184,.4)" }}
           >
-            <div className="text-4xl mb-3">🔄</div>
+            <ArrowLeftRight size={36} className="mb-3 mx-auto text-slate-600" />
             <div className="text-sm">
               Chưa có giao dịch chuyển nhượng nào trong mùa này.
             </div>
@@ -281,7 +265,6 @@ const TransferHistory = () => {
                         background: "rgba(248,113,113,.12)",
                         color: "#f87171",
                         border: "1px solid rgba(248,113,113,.2)",
-                        fontFamily: "'Orbitron',monospace",
                       }}
                     >
                       {t.FromShort}
@@ -293,7 +276,6 @@ const TransferHistory = () => {
                         background: "rgba(52,211,153,.12)",
                         color: "#34d399",
                         border: "1px solid rgba(52,211,153,.2)",
-                        fontFamily: "'Orbitron',monospace",
                       }}
                     >
                       {t.ToShort}

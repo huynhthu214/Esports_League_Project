@@ -20,6 +20,8 @@ const {
   getTeamStandings,
   deactivatePlayer,
   activatePlayer,
+  updatePlayer,
+  deletePlayer,
   getPlayerProfile,
   getSeasonTeams,
   registerSeasonTeams,
@@ -77,6 +79,8 @@ router.patch(
   requireAdmin,
   deactivatePlayer,
 );
+router.put("/players/:id", verifyToken, requireAdmin, updatePlayer);
+router.delete("/players/:id", verifyToken, requireAdmin, deletePlayer);
 router.patch(
   "/players/:id/activate",
   verifyToken,

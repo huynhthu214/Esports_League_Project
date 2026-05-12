@@ -1,6 +1,11 @@
 import { useState, useEffect, useCallback } from "react";
 import axiosClient from "../../api/axiosClient";
 
+const STYLE = `
+  @keyframes dot-blink { 0%,100%{opacity:1} 50%{opacity:.3} }
+  .dot-blink { animation: dot-blink 1.8s ease infinite; }
+`;
+
 const POSITION_ORDER = ["Top", "Jungle", "Mid", "ADC", "Support"];
 const POSITION_COLOR = {
   Top: "bg-red-500/20 text-red-400 border border-red-500/30",
@@ -117,15 +122,12 @@ const RosterViewer = () => {
   const selectedSeason = seasons.find((s) => s.SeasonID === seasonId);
 
   return (
-    <div className="min-h-[calc(100vh-80px)] w-full bg-[#0b1120] text-slate-200 p-8 font-sans relative">
+    <div className="min-h-[calc(100vh-80px)] w-full bg-[#0b1120] text-slate-200 p-8 relative font-sans">
+      <style>{STYLE}</style>
       <div className="max-w-5xl mx-auto">
         <h1 className="text-3xl font-black italic tracking-wider text-transparent bg-clip-text bg-gradient-to-r from-cyan-400 to-blue-500 uppercase mb-1">
-          👁️ Quản lý Roster
+          Quản lý Roster
         </h1>
-        <p className="text-sm text-slate-400 mb-8 font-medium">
-          Chọn mùa → đội tự lọc theo mùa → roster tự tải · Loại bỏ chuyển trạng
-          thái TRANSFERRED_OUT
-        </p>
 
         {/* ── Filter bar ── */}
         <div className="flex flex-wrap gap-4 mb-6 bg-slate-900/60 backdrop-blur-md p-5 rounded-2xl border border-slate-800 shadow-lg">

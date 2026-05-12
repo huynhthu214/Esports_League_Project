@@ -1,8 +1,9 @@
 import { useState, useEffect } from "react";
 import axiosClient from "../../api/axiosClient";
+import { Info } from "lucide-react";
 
 const STYLE = `
-  @import url('https://fonts.googleapis.com/css2?family=Orbitron:wght@700;900&family=Rajdhani:wght@400;500;600;700&display=swap');
+  @import url('https://fonts.googleapis.com/css2?family=Orbitron:wght@600;700;900&family=Rajdhani:wght@400;500;600;700&display=swap');
   @keyframes fadeUp { from{opacity:0;transform:translateY(16px)} to{opacity:1;transform:translateY(0)} }
   @keyframes spin { to{transform:rotate(360deg)} }
   .fade-up { animation: fadeUp .4s ease both; }
@@ -147,12 +148,8 @@ const RegisterSeasonTeams = () => {
             className="text-3xl font-black uppercase text-white"
             style={{ fontFamily: "'Orbitron',monospace" }}
           >
-            🏟️ Đăng Ký Đội Vào Mùa
+            Đăng Ký Đội Vào Mùa
           </h1>
-          <p className="text-sm mt-1" style={{ color: "rgba(148,163,184,.6)" }}>
-            Chọn mùa giải → chọn đội → đăng ký vào SeasonTeams. Sau đó mới đăng
-            ký Roster tuyển thủ.
-          </p>
         </div>
 
         {/* Season selector */}
@@ -246,7 +243,7 @@ const RegisterSeasonTeams = () => {
                   className="text-center py-12 text-sm"
                   style={{ color: "rgba(148,163,184,.4)" }}
                 >
-                  🎉 Tất cả đội đã được đăng ký vào mùa này
+                  Tất cả đội đã được đăng ký vào mùa này
                 </div>
               ) : (
                 <div className="p-3 flex flex-col gap-2 max-h-80 overflow-y-auto">
@@ -441,7 +438,7 @@ const RegisterSeasonTeams = () => {
               border: "1px solid rgba(56,189,248,.15)",
             }}
           >
-            <span className="text-xl flex-shrink-0">💡</span>
+            <Info size={16} className="flex-shrink-0 text-cyan-400 mt-0.5" />
             <div className="text-sm" style={{ color: "rgba(148,163,184,.8)" }}>
               Đã đăng ký{" "}
               <strong style={{ color: "#38bdf8" }}>

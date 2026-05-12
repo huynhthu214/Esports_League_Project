@@ -718,6 +718,127 @@ const activatePlayer = async (req, res) => {
 };
 
 // ================================================================
+// CAP NHAT THONG TIN TUYEN THU — PUT /api/admin/players/:id
+// ================================================================
+const updatePlayer = async (req, res) => {
+  const { id } = req.params;
+  const { nickname, fullName, position } = req.body;
+
+  if (!nickname || !nickname.trim()) {
+    return res.status(400).json({ message: "Nickname khong duoc de trong." });
+  }
+  const validPositions = ["Top", "Jungle", "Mid", "ADC", "Support"];
+  if (position && !validPositions.includes(position)) {
+    return res.status(400).json({ message: "Vi tri khong hop le." });
+  }
+
+  try {
+    const pool = getPool();
+    const check = await pool
+      .request()
+      .input("pid", sql.VarChar(10), id)
+      .query("SELECT PlayerID, Nickname FROM Players WHERE PlayerID = @pid");
+    if (check.recordset.length === 0) {
+      return res
+        .status(404)
+        .json({ message: `Khong tim thay tuyen thu ${id}.` });
+    }
+    const dupCheck = await pool
+      .request()
+      .input("nick", sql.NVarChar(50), nickname.trim())
+      .input("pid", sql.VarChar(10), id)
+      .query(
+        "SELECT PlayerID FROM Players WHERE LOWER(Nickname) = LOWER(@nick) AND PlayerID <> @pid",
+      );
+    if (dupCheck.recordset.length > 0) {
+      return res
+        .status(409)
+        .json({ message: `Nickname "${nickname.trim()}" da ton tai.` });
+    }
+    await pool
+      .request()
+      .input("pid", sql.VarChar(10), id)
+      .input("nick", sql.NVarChar(50), nickname.trim())
+      .input("full", sql.NVarChar(100), fullName?.trim() || null)
+      .input("pos", sql.VarChar(20), position || "Top")
+      .query(
+        "UPDATE Players SET Nickname = @nick, FullName = @full, Position = @pos WHERE PlayerID = @pid",
+      );
+
+    res.json({
+      message: `Cap nhat tuyen thu ${id} thanh cong.`,
+      data: {
+        PlayerID: id,
+        Nickname: nickname.trim(),
+        FullName: fullName?.trim() || null,
+        Position: position,
+      },
+    });
+  } catch (err) {
+    console.error("updatePlayer:", err.message);
+    res.status(500).json({ message: "Loi server khi cap nhat tuyen thu." });
+  }
+};
+
+// ================================================================
+// XOA CUNG TUYEN THU — DELETE /api/admin/players/:id
+// Guard: khong cho xoa neu con Roster hoac TransferHistory
+// ================================================================
+const deletePlayer = async (req, res) => {
+  const { id } = req.params;
+  try {
+    const pool = getPool();
+    const check = await pool
+      .request()
+      .input("pid", sql.VarChar(10), id)
+      .query("SELECT PlayerID, Nickname FROM Players WHERE PlayerID = @pid");
+    if (check.recordset.length === 0) {
+      return res
+        .status(404)
+        .json({ message: `Khong tim thay tuyen thu ${id}.` });
+    }
+    const player = check.recordset[0];
+
+    // Guard 1: con trong Roster
+    const rosterCheck = await pool
+      .request()
+      .input("pid", sql.VarChar(10), id)
+      .query(
+        "SELECT TOP 1 TeamID, SeasonID FROM Rosters WHERE PlayerID = @pid",
+      );
+    if (rosterCheck.recordset.length > 0) {
+      const r = rosterCheck.recordset[0];
+      return res.status(409).json({
+        message: `Khong the xoa: ${player.Nickname} hien con trong roster doi ${r.TeamID} (mua ${r.SeasonID}). Hay loai khoi roster truoc.`,
+      });
+    }
+
+    // Guard 2: co lich su chuyen nhuong
+    const transferCheck = await pool
+      .request()
+      .input("pid", sql.VarChar(10), id)
+      .query(
+        "SELECT TOP 1 TransferID FROM TransferHistory WHERE PlayerID = @pid",
+      );
+    if (transferCheck.recordset.length > 0) {
+      return res.status(409).json({
+        message: `Khong the xoa: ${player.Nickname} co lich su chuyen nhuong. Dung "An" thay vi xoa.`,
+      });
+    }
+
+    await pool
+      .request()
+      .input("pid", sql.VarChar(10), id)
+      .query("DELETE FROM Players WHERE PlayerID = @pid");
+
+    res.json({ message: `Da xoa tuyen thu ${player.Nickname} (${id}).` });
+  } catch (err) {
+    console.error("deletePlayer:", err.message);
+    res.status(500).json({ message: "Loi server khi xoa tuyen thu." });
+  }
+};
+
+// ================================================================
 // LẤY HỒ SƠ TUYỂN THỦ (Profile)
 // GET /api/players/:id/profile
 // ================================================================
@@ -905,6 +1026,8 @@ module.exports = {
   getTeamStandings,
   deactivatePlayer,
   activatePlayer,
+  updatePlayer,
+  deletePlayer,
   getPlayerProfile,
   getSeasonTeams,
   registerSeasonTeams,

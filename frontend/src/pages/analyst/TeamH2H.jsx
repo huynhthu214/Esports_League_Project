@@ -2,7 +2,6 @@ import { useState, useEffect } from "react";
 import axiosClient from "../../api/axiosClient";
 
 const STYLE = `
-  @import url('https://fonts.googleapis.com/css2?family=Orbitron:wght@700;900&family=Rajdhani:wght@400;500;600;700&display=swap');
   @keyframes fadeUp { from{opacity:0;transform:translateY(16px)} to{opacity:1;transform:translateY(0)} }
   @keyframes spin { to{transform:rotate(360deg)} }
   .fade-up { animation: fadeUp .4s ease both; }
@@ -54,10 +53,9 @@ const TeamH2H = () => {
 
   return (
     <div
-      className="min-h-screen relative overflow-x-hidden text-slate-200"
+      className="min-h-[calc(100vh-80px)] w-full relative overflow-x-hidden text-slate-200 font-sans"
       style={{
         background: "#080c16",
-        fontFamily: "'Rajdhani','Segoe UI',sans-serif",
       }}
     >
       <style>{STYLE}</style>
@@ -78,7 +76,7 @@ const TeamH2H = () => {
           }}
         />
       </div>
-      <div className="relative z-10 max-w-4xl mx-auto px-4 sm:px-6 py-8">
+      <div className="relative z-10 max-w-4xl mx-auto p-8">
         <div className="fade-up mb-6">
           <div className="flex items-center gap-2 mb-1">
             <div className="w-2 h-2 rounded-full bg-orange-400 animate-pulse" />
@@ -86,17 +84,16 @@ const TeamH2H = () => {
               className="text-xs font-bold uppercase tracking-[0.25em]"
               style={{ color: "rgba(251,146,60,.7)" }}
             >
-              MongoDB · 10 trận gần nhất
+              10 trận gần nhất
             </span>
           </div>
-          <h1
-            className="text-3xl font-black uppercase text-white"
-            style={{ fontFamily: "'Orbitron',monospace" }}
-          >
-            🥊 Đối Đầu H2H
+          <h1 className="text-3xl font-black italic tracking-wider text-transparent bg-clip-text bg-gradient-to-r from-orange-400 to-red-500 uppercase mb-1">
+            Đối Đầu H2H
           </h1>
-          <p className="text-sm mt-1" style={{ color: "rgba(148,163,184,.6)" }}>  
-          </p>
+          <p
+            className="text-sm mt-1"
+            style={{ color: "rgba(148,163,184,.6)" }}
+          ></p>
         </div>
         <div
           className="fade-up rounded-2xl p-5 mb-6"
@@ -125,8 +122,6 @@ const TeamH2H = () => {
                     background: "rgba(0,0,0,.4)",
                     border: `1px solid ${color}30`,
                     color,
-                    fontFamily: "'Orbitron',monospace",
-                    fontSize: "0.72rem",
                   }}
                 >
                   <option value="">-- Chọn đội --</option>
@@ -146,8 +141,6 @@ const TeamH2H = () => {
             style={{
               background: "linear-gradient(135deg,#c2410c,#fb923c)",
               boxShadow: "0 0 18px rgba(251,146,60,.3)",
-              fontFamily: "'Orbitron',monospace",
-              fontSize: "0.7rem",
             }}
           >
             {loading ? <span className="spinner" /> : "Xem H2H"}
@@ -180,7 +173,6 @@ const TeamH2H = () => {
                   className="text-3xl font-black"
                   style={{
                     color: "#38bdf8",
-                    fontFamily: "'Orbitron',monospace",
                   }}
                 >
                   {win1}
@@ -208,7 +200,6 @@ const TeamH2H = () => {
                   className="text-3xl font-black"
                   style={{
                     color: "#f87171",
-                    fontFamily: "'Orbitron',monospace",
                   }}
                 >
                   {win2}
@@ -238,7 +229,6 @@ const TeamH2H = () => {
                         className="font-black text-sm"
                         style={{
                           color: td1.result === "WIN" ? "#34d399" : "#94a3b8",
-                          fontFamily: "'Orbitron',monospace",
                         }}
                       >
                         {t1info.ShortName || team1}
@@ -258,7 +248,6 @@ const TeamH2H = () => {
                           background: "rgba(251,146,60,.1)",
                           color: "#fb923c",
                           border: "1px solid rgba(251,146,60,.2)",
-                          fontFamily: "'Orbitron',monospace",
                         }}
                       >
                         {td1.score || "?"} — {td2.score || "?"}
@@ -277,7 +266,6 @@ const TeamH2H = () => {
                         className="font-black text-sm"
                         style={{
                           color: td2.result === "WIN" ? "#34d399" : "#94a3b8",
-                          fontFamily: "'Orbitron',monospace",
                         }}
                       >
                         {t2info.ShortName || team2}

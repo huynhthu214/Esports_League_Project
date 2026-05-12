@@ -1,6 +1,11 @@
 import { useState, useEffect, useCallback } from "react";
 import axiosClient from "../../api/axiosClient";
 
+const STYLE = `
+  @keyframes dot-blink { 0%,100%{opacity:1} 50%{opacity:.3} }
+  .dot-blink { animation: dot-blink 1.8s ease infinite; }
+`;
+
 const POSITIONS = ["Top", "Jungle", "Mid", "ADC", "Support"];
 const POS_COLOR = {
   Top: "border-red-500/40 text-red-400",
@@ -128,14 +133,11 @@ const RosterForm = () => {
 
   return (
     <div className="min-h-[calc(100vh-80px)] w-full bg-[#0b1120] text-slate-200 p-8 font-sans">
+      <style>{STYLE}</style>
       <div className="max-w-4xl mx-auto">
         <h1 className="text-3xl font-black italic tracking-wider text-transparent bg-clip-text bg-gradient-to-r from-blue-400 to-cyan-500 uppercase mb-1">
-          👥 Đăng ký Roster
+          Đăng ký Roster
         </h1>
-        <p className="text-sm text-slate-400 mb-8 font-medium">
-          Tối đa 10 người/đội · Trigger tự động kiểm tra tính hợp lệ · Chọn mùa
-          trước → đội → tuyển thủ
-        </p>
 
         {status && (
           <div

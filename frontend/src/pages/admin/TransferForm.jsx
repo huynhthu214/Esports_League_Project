@@ -1,6 +1,11 @@
 import { useState, useEffect, useCallback } from "react";
 import axiosClient from "../../api/axiosClient";
 
+const STYLE = `
+  @keyframes dot-blink { 0%,100%{opacity:1} 50%{opacity:.3} }
+  .dot-blink { animation: dot-blink 1.8s ease infinite; }
+`;
+
 const sel = "ui-select";
 
 const TransferForm = () => {
@@ -203,13 +208,11 @@ const TransferForm = () => {
 
   return (
     <div className="min-h-[calc(100vh-80px)] w-full bg-[#0b1120] text-slate-200 p-8 font-sans">
+      <style>{STYLE}</style>
       <div className="max-w-4xl mx-auto">
         <h1 className="text-3xl font-black italic tracking-wider text-transparent bg-clip-text bg-gradient-to-r from-orange-400 to-red-500 uppercase mb-1">
-          🔄 Chuyển Nhượng Tuyển Thủ
+          Chuyển Nhượng Tuyển Thủ
         </h1>
-        <p className="text-sm font-bold text-orange-500/80 mb-8 uppercase tracking-widest bg-orange-500/10 inline-block px-3 py-1 rounded border border-orange-500/20">
-          ATOMIC TRANSACTION · BẮT BUỘC TOÀN VẸN DỮ LIỆU
-        </p>
 
         {loadError && (
           <div className="mb-6 p-4 border rounded-xl text-sm font-medium bg-amber-900/10 border-amber-500/20 text-amber-300">
@@ -406,7 +409,7 @@ const TransferForm = () => {
           {/* ── Từ đội → Đến đội ── */}
           <div className="grid sm:grid-cols-2 gap-6 relative">
             <div className="absolute left-1/2 top-1/2 -translate-x-1/2 -translate-y-1/2 bg-slate-800 text-slate-400 w-10 h-10 rounded-full flex items-center justify-center border-4 border-[#0b1120] font-black z-10 text-lg">
-              ➝
+              →
             </div>
 
             {/* Rời đội — đã chọn từ bước 2 */}

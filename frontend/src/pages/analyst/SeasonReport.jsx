@@ -2,7 +2,6 @@ import { useState, useEffect } from "react";
 import axiosClient from "../../api/axiosClient";
 
 const STYLE = `
-  @import url('https://fonts.googleapis.com/css2?family=Orbitron:wght@700;900&family=Rajdhani:wght@400;500;600;700&display=swap');
   @keyframes fadeUp { from{opacity:0;transform:translateY(16px)} to{opacity:1;transform:translateY(0)} }
   @keyframes spin { to{transform:rotate(360deg)} }
   .fade-up { animation: fadeUp .4s ease both; }
@@ -24,7 +23,7 @@ const SeasonReport = () => {
     axiosClient
       .get(`/analytics/reports/season/${sid}`)
       .then((r) => setReport(r.data))
-      .catch(() => setError("Không tải được báo cáo. Kiểm tra SQL + MongoDB."))
+      .catch(() => setError("Không tải được báo cáo."))
       .finally(() => setLoading(false));
   };
 
@@ -50,10 +49,9 @@ const SeasonReport = () => {
 
   return (
     <div
-      className="min-h-screen relative overflow-x-hidden text-slate-200"
+      className="min-h-[calc(100vh-80px)] w-full relative overflow-x-hidden text-slate-200 font-sans"
       style={{
         background: "#080c16",
-        fontFamily: "'Rajdhani','Segoe UI',sans-serif",
       }}
     >
       <style>{STYLE}</style>
@@ -74,7 +72,7 @@ const SeasonReport = () => {
           }}
         />
       </div>
-      <div className="relative z-10 max-w-5xl mx-auto px-4 sm:px-6 py-8">
+      <div className="relative z-10 max-w-5xl mx-auto p-8">
         <div className="fade-up mb-6">
           <div className="flex items-center gap-2 mb-1">
             <div className="w-2 h-2 rounded-full bg-yellow-400 animate-pulse" />
@@ -82,14 +80,11 @@ const SeasonReport = () => {
               className="text-xs font-bold uppercase tracking-[0.25em]"
               style={{ color: "rgba(251,191,36,.7)" }}
             >
-              SQL + MongoDB
+              Phân tích
             </span>
           </div>
-          <h1
-            className="text-3xl font-black uppercase text-white"
-            style={{ fontFamily: "'Orbitron',monospace" }}
-          >
-            📋 Báo Cáo Mùa Giải
+          <h1 className="text-3xl font-black italic tracking-wider text-transparent bg-clip-text bg-gradient-to-r from-yellow-400 to-orange-500 uppercase mb-1">
+            Báo Cáo Mùa Giải
           </h1>
         </div>
         <div className="fade-up flex gap-3 mb-6 flex-wrap items-center">
@@ -101,8 +96,6 @@ const SeasonReport = () => {
               background: "rgba(13,17,30,.9)",
               border: "1px solid rgba(251,191,36,.25)",
               color: "#fbbf24",
-              fontFamily: "'Orbitron',monospace",
-              fontSize: "0.72rem",
             }}
           >
             <option value="">-- Chọn mùa giải --</option>
@@ -138,113 +131,6 @@ const SeasonReport = () => {
         )}
         {report && (
           <>
-            {/* Source badges */}
-            <div className="fade-up flex gap-2 mb-5 flex-wrap">
-              <span
-                className="text-xs px-3 py-1 rounded-full font-bold"
-                style={{
-                  background: "rgba(56,189,248,.12)",
-                  color: "#38bdf8",
-                  border: "1px solid rgba(56,189,248,.25)",
-                }}
-              >
-                🗄️ SQL Server — Standings & KDA
-              </span>
-              <span
-                className="text-xs px-3 py-1 rounded-full font-bold"
-                style={{
-                  background: "rgba(52,211,153,.12)",
-                  color: "#34d399",
-                  border: "1px solid rgba(52,211,153,.25)",
-                }}
-              >
-                🍃 MongoDB — Trận đấu & Tướng
-              </span>
-              <span
-                className="text-xs px-3 py-1 rounded-full font-bold"
-                style={{
-                  background: "rgba(251,191,36,.12)",
-                  color: "#fbbf24",
-                  border: "1px solid rgba(251,191,36,.25)",
-                }}
-              >
-                ⚡ Mongo match_stats: {report.total_matches_mongo}
-              </span>
-              <span
-                className="text-xs px-3 py-1 rounded-full font-bold"
-                style={{
-                  background: "rgba(56,189,248,.10)",
-                  color: "rgba(226,232,240,.85)",
-                  border: "1px solid rgba(148,163,184,.18)",
-                }}
-              >
-                🧾 SQL Matches: {report.total_matches_sql ?? 0}
-              </span>
-            </div>
-
-            {/* Consistency Check (Multi-DB highlight) */}
-            {(() => {
-              const sqlCount = Number(report.total_matches_sql ?? 0);
-              const mongoCount = Number(report.total_matches_mongo ?? 0);
-              const delta = mongoCount - sqlCount;
-              const ok = delta === 0;
-              return (
-                <div
-                  className="fade-up mb-5 px-5 py-4 rounded-2xl"
-                  style={{
-                    background: ok
-                      ? "rgba(52,211,153,.06)"
-                      : "rgba(248,113,113,.06)",
-                    border: ok
-                      ? "1px solid rgba(52,211,153,.18)"
-                      : "1px solid rgba(248,113,113,.18)",
-                  }}
-                >
-                  <div className="flex items-center justify-between gap-4 flex-wrap">
-                    <div>
-                      <div
-                        className="text-xs font-black uppercase tracking-[0.25em]"
-                        style={{
-                          color: ok
-                            ? "rgba(52,211,153,.9)"
-                            : "rgba(248,113,113,.9)",
-                          fontFamily: "'Orbitron',monospace",
-                          fontSize: "0.68rem",
-                        }}
-                      >
-                        Multi-DB Consistency Check
-                      </div>
-                      <div
-                        className="text-sm mt-1"
-                        style={{ color: "rgba(226,232,240,.9)" }}
-                      >
-                        So sánh dữ liệu vận hành (SQL) và dữ liệu raw/analytics
-                        (MongoDB) cho cùng 1 mùa giải.
-                      </div>
-                    </div>
-                    <div
-                      className="text-sm font-black"
-                      style={{
-                        color: ok ? "#34d399" : "#f87171",
-                        fontFamily: "'Orbitron',monospace",
-                      }}
-                    >
-                      {ok ? "OK" : `Δ ${delta > 0 ? "+" : ""}${delta}`}
-                    </div>
-                  </div>
-
-                  <div
-                    className="mt-3 text-xs"
-                    style={{ color: "rgba(148,163,184,.65)" }}
-                  >
-                    {ok
-                      ? "Hai nguồn khớp nhau → pipeline đồng bộ dữ liệu ổn định."
-                      : "Chênh lệch thường do: match chưa ghi vào SQL hoặc chưa ingest vào MongoDB. Đây là điểm nổi bật của hệ đa DB: có thể giám sát và phát hiện lệch dữ liệu."}
-                  </div>
-                </div>
-              );
-            })()}
-
             <div className="grid lg:grid-cols-2 gap-5">
               {/* Standings */}
               <div
@@ -264,7 +150,7 @@ const SeasonReport = () => {
                   />
                   <span
                     className="font-bold text-sm uppercase tracking-widest text-white"
-                    style={{ fontFamily: "'Orbitron',monospace" }}
+                    style={{}}
                   >
                     Bảng Xếp Hạng
                   </span>
@@ -286,21 +172,20 @@ const SeasonReport = () => {
                                 : i === 2
                                   ? "#cd7c3b"
                                   : "rgba(148,163,184,.4)",
-                          fontFamily: "'Orbitron',monospace",
                         }}
                       >
                         {i === 0
-                          ? "🥇"
+                          ? "#1"
                           : i === 1
-                            ? "🥈"
+                            ? "#2"
                             : i === 2
-                              ? "🥉"
+                              ? "#3"
                               : `#${t.Standing_Rank}`}
                       </div>
                       <div className="flex-1">
                         <div
                           className="font-black text-sm text-white"
-                          style={{ fontFamily: "'Orbitron',monospace" }}
+                          style={{}}
                         >
                           {t.ShortName}
                         </div>
@@ -355,7 +240,7 @@ const SeasonReport = () => {
                   />
                   <span
                     className="font-bold text-sm uppercase tracking-widest text-white"
-                    style={{ fontFamily: "'Orbitron',monospace" }}
+                    style={{}}
                   >
                     Top KDA
                   </span>
@@ -370,10 +255,9 @@ const SeasonReport = () => {
                         className="w-6 font-black text-xs text-center"
                         style={{
                           color: i === 0 ? "#fbbf24" : "rgba(148,163,184,.4)",
-                          fontFamily: "'Orbitron',monospace",
                         }}
                       >
-                        {i === 0 ? "👑" : `#${p.KDA_Rank}`}
+                        {`#${p.KDA_Rank}`}
                       </div>
                       <div className="flex-1">
                         <div className="font-bold text-sm text-white">
@@ -390,7 +274,6 @@ const SeasonReport = () => {
                         className="font-black text-sm"
                         style={{
                           color: "#a78bfa",
-                          fontFamily: "'Orbitron',monospace",
                         }}
                       >
                         {Number(p.AvgKDA).toFixed(2)}
@@ -426,9 +309,9 @@ const SeasonReport = () => {
                   />
                   <span
                     className="font-bold text-sm uppercase tracking-widest text-white"
-                    style={{ fontFamily: "'Orbitron',monospace" }}
+                    style={{}}
                   >
-                    🍃 Top Tướng (MongoDB)
+                    Top Tướng
                   </span>
                 </div>
                 <div className="p-4 grid sm:grid-cols-5 gap-3">
@@ -443,7 +326,7 @@ const SeasonReport = () => {
                     >
                       <div
                         className="font-black text-xs mb-1 truncate text-white"
-                        style={{ fontFamily: "'Orbitron',monospace" }}
+                        style={{}}
                       >
                         {h._id || "?"}
                       </div>
@@ -466,7 +349,7 @@ const SeasonReport = () => {
                       className="sm:col-span-5 text-sm text-center py-6"
                       style={{ color: "rgba(148,163,184,.4)" }}
                     >
-                      Chưa có dữ liệu tướng trong MongoDB
+                      Chưa có dữ liệu tướng
                     </div>
                   )}
                 </div>

@@ -1,8 +1,8 @@
 import { useState, useEffect } from "react";
 import axiosClient from "../../api/axiosClient";
+import { Trophy, Star, Swords } from "lucide-react";
 
 const STYLE = `
-  @import url('https://fonts.googleapis.com/css2?family=Orbitron:wght@700;900&family=Rajdhani:wght@400;500;600;700&display=swap');
   @keyframes fadeUp { from{opacity:0;transform:translateY(16px)} to{opacity:1;transform:translateY(0)} }
   @keyframes spin { to{transform:rotate(360deg)} }
   .fade-up { animation: fadeUp .4s ease both; }
@@ -61,11 +61,8 @@ const MatchHistory = () => {
 
   return (
     <div
-      className="min-h-screen relative overflow-x-hidden text-slate-200"
-      style={{
-        background: "#080c16",
-        fontFamily: "'Rajdhani','Segoe UI',sans-serif",
-      }}
+      className="min-h-[calc(100vh-80px)] w-full relative overflow-x-hidden text-slate-200 font-sans"
+      style={{ background: "#080c16" }}
     >
       <style>{STYLE}</style>
 
@@ -87,7 +84,7 @@ const MatchHistory = () => {
         />
       </div>
 
-      <div className="relative z-10 max-w-5xl mx-auto px-4 sm:px-6 py-8">
+      <div className="relative z-10 max-w-5xl mx-auto p-8">
         {/* Header */}
         <div className="fade-up mb-6">
           <div className="flex items-center gap-2 mb-1">
@@ -99,14 +96,8 @@ const MatchHistory = () => {
               Lịch Sử
             </span>
           </div>
-          <h1
-            className="text-3xl font-black uppercase text-white"
-            style={{
-              fontFamily: "'Orbitron',monospace",
-              textShadow: "0 0 30px rgba(167,139,250,.3)",
-            }}
-          >
-            ⚔️ Lịch Sử Trận Đấu
+          <h1 className="text-3xl font-black italic tracking-wider text-transparent bg-clip-text bg-gradient-to-r from-purple-400 to-pink-500 uppercase mb-1">
+            Lịch Sử Trận Đấu
           </h1>
         </div>
 
@@ -120,8 +111,6 @@ const MatchHistory = () => {
               background: "rgba(13,17,30,.9)",
               border: "1px solid rgba(167,139,250,.25)",
               color: "#a78bfa",
-              fontFamily: "'Orbitron',monospace",
-              fontSize: "0.75rem",
             }}
           >
             {seasons.map((s) => (
@@ -161,7 +150,7 @@ const MatchHistory = () => {
             className="fade-up text-center py-20"
             style={{ color: "rgba(148,163,184,.4)" }}
           >
-            <div className="text-4xl mb-3">🏟️</div>
+            <Swords size={36} className="mb-3 mx-auto text-slate-600" />
             <div className="text-sm">
               Chưa có trận đấu nào hoàn thành trong mùa này.
             </div>
@@ -237,7 +226,6 @@ const MatchHistory = () => {
                               m.WinnerShort === m.Team1Short
                                 ? "#34d399"
                                 : "#94a3b8",
-                            fontFamily: "'Orbitron',monospace",
                           }}
                         >
                           {m.Team1Short}
@@ -258,7 +246,6 @@ const MatchHistory = () => {
                             background: "rgba(167,139,250,.1)",
                             color: "#a78bfa",
                             border: "1px solid rgba(167,139,250,.2)",
-                            fontFamily: "'Orbitron',monospace",
                           }}
                         >
                           {m.Team1Score ?? "—"}:{m.Team2Score ?? "—"}
@@ -274,7 +261,6 @@ const MatchHistory = () => {
                               m.WinnerShort === m.Team2Short
                                 ? "#34d399"
                                 : "#94a3b8",
-                            fontFamily: "'Orbitron',monospace",
                           }}
                         >
                           {m.Team2Short}
@@ -295,10 +281,9 @@ const MatchHistory = () => {
                             background: "rgba(52,211,153,.12)",
                             color: "#34d399",
                             border: "1px solid rgba(52,211,153,.25)",
-                            fontFamily: "'Orbitron',monospace",
                           }}
                         >
-                          🏆 {m.WinnerShort || "—"}
+                          {m.WinnerShort || "—"}
                         </span>
                       </td>
 
@@ -307,7 +292,7 @@ const MatchHistory = () => {
                         className="px-4 py-4 text-xs font-semibold"
                         style={{ color: "#fbbf24" }}
                       >
-                        {m.MVPNickname ? `⭐ ${m.MVPNickname}` : "—"}
+                        {m.MVPNickname || "—"}
                       </td>
 
                       {/* Format */}

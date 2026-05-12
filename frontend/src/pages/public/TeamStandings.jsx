@@ -4,7 +4,6 @@ import axiosClient from "../../api/axiosClient";
 /* eslint-disable react-hooks/set-state-in-effect */
 
 const STYLE = `
-  @import url('https://fonts.googleapis.com/css2?family=Orbitron:wght@700;900&family=Rajdhani:wght@400;500;600;700&display=swap');
   @keyframes fadeUp { from{opacity:0;transform:translateY(16px)} to{opacity:1;transform:translateY(0)} }
   @keyframes spin { to{transform:rotate(360deg)} }
   .fade-up { animation: fadeUp .4s ease both; }
@@ -77,11 +76,8 @@ const TeamStandings = () => {
 
   return (
     <div
-      className="min-h-screen relative overflow-x-hidden text-slate-200"
-      style={{
-        background: "#080c16",
-        fontFamily: "'Rajdhani','Segoe UI',sans-serif",
-      }}
+      className="min-h-[calc(100vh-80px)] w-full relative overflow-x-hidden text-slate-200 font-sans"
+      style={{ background: "#080c16" }}
     >
       <style>{STYLE}</style>
 
@@ -110,7 +106,7 @@ const TeamStandings = () => {
         />
       </div>
 
-      <div className="relative z-10 max-w-5xl mx-auto px-4 sm:px-6 lg:px-8 py-8">
+      <div className="relative z-10 max-w-5xl mx-auto p-8">
         {/* Header */}
         <div className="fade-up mb-6">
           <div className="flex items-center gap-2 mb-1">
@@ -122,14 +118,8 @@ const TeamStandings = () => {
               Xếp Hạng Đội
             </span>
           </div>
-          <h1
-            className="text-3xl font-black uppercase text-white"
-            style={{
-              fontFamily: "'Orbitron',monospace",
-              textShadow: "0 0 30px rgba(167,139,250,.3)",
-            }}
-          >
-            📊 Team Standings
+          <h1 className="text-3xl font-black italic tracking-wider text-transparent bg-clip-text bg-gradient-to-r from-purple-400 to-cyan-500 uppercase mb-1">
+            Team Standings
           </h1>
         </div>
 
@@ -144,8 +134,6 @@ const TeamStandings = () => {
               background: "rgba(13,17,30,.9)",
               border: "1px solid rgba(167,139,250,.25)",
               color: "#a78bfa",
-              fontFamily: "'Orbitron',monospace",
-              fontSize: "0.75rem",
             }}
           >
             {loadingSeason ? (
@@ -209,13 +197,8 @@ const TeamStandings = () => {
                       background: `radial-gradient(circle at 50% 100%, ${rs.color}, transparent 70%)`,
                     }}
                   />
-                  <div className="text-lg mb-1">
-                    {rank === 1 ? "🥇" : rank === 2 ? "🥈" : "🥉"}
-                  </div>
-                  <div
-                    className="font-black text-white text-center text-sm leading-tight"
-                    style={{ fontFamily: "'Orbitron',monospace" }}
-                  >
+                  <div className="text-lg mb-1">{rank}</div>
+                  <div className="font-black text-white text-center text-sm leading-tight">
                     {t.ShortName}
                   </div>
                   <div
@@ -327,21 +310,16 @@ const TeamStandings = () => {
                                     background: "rgba(148,163,184,.08)",
                                     color: "rgba(148,163,184,.5)",
                                     border: "1px solid rgba(148,163,184,.15)",
-                                    fontFamily: "'Orbitron',monospace",
-                                    fontSize: "0.7rem",
                                   }
                             }
                           >
-                            {rs
-                              ? ["🥇", "🥈", "🥉"][t.Standing_Rank - 1]
-                              : t.Standing_Rank}
+                            {rs ? `#${t.Standing_Rank}` : t.Standing_Rank}
                           </div>
                         </td>
                         <td className="px-5 py-4">
                           <div
                             className="font-black text-white"
                             style={{
-                              fontFamily: "'Orbitron',monospace",
                               fontSize: "0.85rem",
                             }}
                           >
@@ -388,7 +366,6 @@ const TeamStandings = () => {
                             style={{
                               color: "#fbbf24",
                               background: "rgba(251,191,36,.12)",
-                              fontFamily: "'Orbitron',monospace",
                             }}
                           >
                             {t.Points}
@@ -435,8 +412,7 @@ const TeamStandings = () => {
           className="text-xs mt-4 text-center"
           style={{ color: "rgba(148,163,184,.3)" }}
         >
-          Dữ liệu từ SQL Server · View: vw_TeamStandings · DENSE_RANK theo Wins
-          DESC
+          Xếp hạng theo số trận thắng DESC
         </p>
       </div>
     </div>
